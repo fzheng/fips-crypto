@@ -1,0 +1,90 @@
+{
+  "name": "fips-crypto",
+  "version": "0.1.0",
+  "description": "Post-quantum cryptography library implementing FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), and FIPS 205 (SLH-DSA)",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./ml-kem": {
+      "import": "./dist/esm/ml-kem.js",
+      "require": "./dist/cjs/ml-kem.js",
+      "types": "./dist/types/ml-kem.d.ts"
+    },
+    "./ml-dsa": {
+      "import": "./dist/esm/ml-dsa.js",
+      "require": "./dist/cjs/ml-dsa.js",
+      "types": "./dist/types/ml-dsa.d.ts"
+    },
+    "./slh-dsa": {
+      "import": "./dist/esm/slh-dsa.js",
+      "require": "./dist/cjs/slh-dsa.js",
+      "types": "./dist/types/slh-dsa.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "pkg"
+  ],
+  "scripts": {
+    "build:wasm": "wasm-pack build rust --target bundler --release --out-dir ../pkg && wasm-pack build rust --target nodejs --release --out-dir ../pkg-node",
+    "build:ts": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json",
+    "build": "npm run build:wasm && npm run build:ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:vectors": "vitest run tests/vectors/",
+    "bench": "vitest bench",
+    "lint": "eslint src tests --ext .ts",
+    "clean": "rm -rf dist pkg pkg-node"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fzheng/fips-crypto.git"
+  },
+  "keywords": [
+    "post-quantum",
+    "cryptography",
+    "pqc",
+    "ml-kem",
+    "ml-dsa",
+    "slh-dsa",
+    "fips-203",
+    "fips-204",
+    "fips-205",
+    "kyber",
+    "dilithium",
+    "sphincs",
+    "wasm",
+    "webassembly"
+  ],
+  "author": {
+    "name": "Feng Zheng",
+    "url": "https://github.com/fzheng"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fzheng/fips-crypto/issues"
+  },
+  "homepage": "https://github.com/fzheng/fips-crypto#readme",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@vitest/coverage-v8": "^1.2.0",
+    "esbuild": "^0.20.0",
+    "eslint": "^8.56.0",
+    "fast-check": "^3.15.0",
+    "typescript": "^5.3.0",
+    "vite-plugin-top-level-await": "^1.6.0",
+    "vite-plugin-wasm": "^3.6.0",
+    "vitest": "^1.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
