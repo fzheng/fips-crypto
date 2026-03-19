@@ -199,4 +199,4 @@ export async function init(): Promise<void> {
  * console.log(`Using fips-crypto v${VERSION}`);
  * ```
  */
-export const VERSION = '0.2.2';
+export const VERSION = '0.3.0';
