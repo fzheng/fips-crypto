@@ -16,8 +16,8 @@ export default defineConfig({
       exclude: ['src/**/*.d.ts', 'src/loader/**'],
       thresholds: {
         lines: 80,
-        functions: 70,  // Lower threshold due to WASM implementation bugs
-        branches: 70,
+        functions: 80,
+        branches: 80,
         statements: 80,
       },
     },
