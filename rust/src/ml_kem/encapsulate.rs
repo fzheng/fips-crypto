@@ -1,6 +1,12 @@
-//! ML-KEM Encapsulation (Algorithm 17 in FIPS 203)
+//! ML-KEM Encapsulation -- FIPS 203 Algorithm 17 (ML-KEM.Encaps_internal)
 //!
 //! Generates a shared secret and ciphertext from a public key.
+//!
+//! The encapsulation process:
+//! 1. Generate (or accept) 32 bytes of randomness m
+//! 2. Compute (K, r) = G(m || H(ek)) -- derive shared secret K and encryption randomness r
+//! 3. Compute ciphertext c = K-PKE.Encrypt(ek, m, r)
+//! 4. Return (c, K)
 
 use crate::ml_kem::params::MlKemParams;
 use crate::ml_kem::MlKemEncapsulation;
@@ -9,12 +15,12 @@ use crate::primitives::random::random_bytes;
 use crate::primitives::sha3::{g, h};
 use wasm_bindgen::JsError;
 
-/// ML-KEM Encapsulation
+/// ML-KEM Encapsulation -- FIPS 203 Algorithm 17 (ML-KEM.Encaps_internal).
 ///
 /// Generates a shared secret and ciphertext using the recipient's public key.
 ///
 /// # Arguments
-/// * `ek` - The encapsulation key (public key)
+/// * `ek` - The encapsulation key (public key), of length ek_bytes
 /// * `seed` - Optional 32-byte seed for deterministic encapsulation (for testing)
 /// * `params` - The ML-KEM parameter set
 ///
@@ -54,7 +60,7 @@ pub fn ml_kem_encapsulate<const K: usize>(
     // Compute H(ek)
     let h_ek = h(ek);
 
-    // (K, r) ← G(m || H(ek))
+    // (K, r) <- G(m || H(ek))
     let mut g_input = [0u8; 64];
     g_input[..32].copy_from_slice(&m);
     g_input[32..].copy_from_slice(&h_ek);
@@ -62,7 +68,7 @@ pub fn ml_kem_encapsulate<const K: usize>(
     let shared_secret: [u8; 32] = g_output[..32].try_into().unwrap();
     let r = &g_output[32..64];
 
-    // c ← K-PKE.Encrypt(ek, m, r)
+    // c <- K-PKE.Encrypt(ek, m, r)
     let ciphertext = k_pke_encrypt::<K>(ek, &m, r, params)?;
 
     Ok(MlKemEncapsulation {
@@ -71,23 +77,31 @@ pub fn ml_kem_encapsulate<const K: usize>(
     })
 }
 
-/// K-PKE Encryption (Algorithm 14 in FIPS 203)
+/// K-PKE Encryption -- FIPS 203 Algorithm 14 (K-PKE.Encrypt).
 ///
-/// Encrypts a message using the PKE public key.
+/// Encrypts a 32-byte message m under the public key ek using randomness r.
+///
+/// Steps:
+/// 1. Parse ek as t_hat || rho
+/// 2. Re-derive matrix A^T from rho (transposed for efficiency)
+/// 3. Sample ephemeral secret r_vec, errors e1, e2 using CBD from randomness r
+/// 4. Compute u = NTT^{-1}(A^T * NTT(r_vec)) + e1
+/// 5. Compute v = NTT^{-1}(t^T * NTT(r_vec)) + e2 + Decompress_q(m, 1)
+/// 6. Return c = Compress(u, d_u) || Compress(v, d_v)
 pub(crate) fn k_pke_encrypt<const K: usize>(
     ek: &[u8],
     m: &[u8; 32],
     r: &[u8],
     params: &MlKemParams,
 ) -> Result<Vec<u8>, JsError> {
-    // Parse public key: t || ρ
+    // Parse public key: t || rho
     let t_bytes = &ek[..384 * K];
     let rho = &ek[384 * K..];
 
     // Decode t
     let t_hat = PolyVec::from_bytes(t_bytes, K);
 
-    // Sample matrix A^T from ρ
+    // Sample matrix A^T from rho
     let a_hat_t = PolyMat::sample_uniform(rho, K, true);
 
     // Sample r vector
@@ -115,17 +129,19 @@ pub(crate) fn k_pke_encrypt<const K: usize>(
     u = u.add(&e1);
     u.reduce();
 
-    // Decode message to polynomial
+    // Decode message to polynomial:
+    // Each bit of m maps to a coefficient: 0 -> 0, 1 -> ceil(q/2) = 1665.
+    // This is equivalent to Decompress_q(m, 1) from FIPS 203 Section 4.2.1.
     let mu = decode_message(m);
 
-    // Compute v = t^T * r + e2 + μ
+    // Compute v = t^T * r + e2 + mu
     let mut v = t_hat.inner_product(&r_hat);
     v.from_ntt();
     v = v.add(&e2);
     v = v.add(&mu);
     v.reduce();
 
-    // Compress and encode ciphertext
+    // Compress and encode ciphertext: c = Compress(u, d_u) || Compress(v, d_v)
     let c1 = u.compress(params.du);
     let c2 = v.compress(params.dv);
 
@@ -136,8 +152,16 @@ pub(crate) fn k_pke_encrypt<const K: usize>(
     Ok(ciphertext)
 }
 
-/// Decode a 32-byte message to a polynomial
-/// Each bit of the message maps to a coefficient: 0 → 0, 1 → ⌈q/2⌉
+/// Decode a 32-byte message to a polynomial.
+///
+/// Each bit of the message maps to a coefficient:
+///   bit 0 -> coefficient 0
+///   bit 1 -> coefficient ceil(q/2) = (3329 + 1) / 2 = 1665
+///
+/// This is equivalent to Decompress_q(m, 1) from FIPS 203 Section 4.2.1:
+/// Decompress_q(1, 1) = round(q / 2) = 1665. The value 1665 is chosen so
+/// that Compress_q(1665, 1) = round(2 * 1665 / 3329) = 1, recovering the
+/// original bit.
 fn decode_message(m: &[u8; 32]) -> Poly {
     let mut poly = Poly::zero();
     let half_q = (crate::primitives::ntt::MLKEM_Q + 1) / 2;
@@ -210,5 +234,24 @@ mod tests {
         for &coeff in &poly_ones.coeffs {
             assert_eq!(coeff, half_q as i16);
         }
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_encapsulate_invalid_ek_length() {
+        // Wrong ek length should return an error
+        // JsError::new panics on non-wasm targets, so we expect a panic
+        let short_ek = vec![0u8; 100];
+        let _ = ml_kem_encapsulate::<MLKEM768_K>(&short_ek, None, &ML_KEM_768);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_encapsulate_seed_too_short() {
+        // A 16-byte seed should be rejected (need at least 32)
+        // JsError::new panics on non-wasm targets, so we expect a panic
+        let keypair = ml_kem_keygen::<MLKEM768_K>(None, &ML_KEM_768).unwrap();
+        let short_seed = [0x42u8; 16];
+        let _ = ml_kem_encapsulate::<MLKEM768_K>(&keypair.ek, Some(&short_seed), &ML_KEM_768);
     }
 }

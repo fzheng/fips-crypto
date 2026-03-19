@@ -156,6 +156,164 @@ describe('ML-KEM', () => {
       expect(aliceSecret).toEqual(bobSecret);
     });
   });
+
+  // ==========================================================================
+  // Stress and Edge Case Tests
+  // ==========================================================================
+  describe('Repeated encapsulation uniqueness', () => {
+    const variantList = [
+      { name: 'ML-KEM-512', impl: ml_kem512 },
+      { name: 'ML-KEM-768', impl: ml_kem768 },
+      { name: 'ML-KEM-1024', impl: ml_kem1024 },
+    ] as const;
+
+    for (const { name, impl } of variantList) {
+      it(`${name}: same public key produces different shared secrets on each encapsulation`, async () => {
+        const { publicKey } = await impl.keygen();
+
+        const results = await Promise.all(
+          Array.from({ length: 5 }, () => impl.encapsulate(publicKey))
+        );
+
+        // Collect all shared secrets as hex strings
+        const secrets = results.map(r => Buffer.from(r.sharedSecret).toString('hex'));
+        const ciphertexts = results.map(r => Buffer.from(r.ciphertext).toString('hex'));
+
+        // All shared secrets should be unique (randomized encapsulation)
+        const uniqueSecrets = new Set(secrets);
+        expect(uniqueSecrets.size).toBe(5);
+
+        // All ciphertexts should also be unique
+        const uniqueCiphertexts = new Set(ciphertexts);
+        expect(uniqueCiphertexts.size).toBe(5);
+      });
+    }
+  });
+
+  describe('Implicit rejection (corrupted ciphertext)', () => {
+    const variantList = [
+      { name: 'ML-KEM-512', impl: ml_kem512 },
+      { name: 'ML-KEM-768', impl: ml_kem768 },
+      { name: 'ML-KEM-1024', impl: ml_kem1024 },
+    ] as const;
+
+    for (const { name, impl } of variantList) {
+      it(`${name}: corrupted ciphertext produces a different shared secret (implicit rejection)`, async () => {
+        const { publicKey, secretKey } = await impl.keygen();
+        const { ciphertext, sharedSecret } = await impl.encapsulate(publicKey);
+
+        // Corrupt the ciphertext by flipping bits in the middle
+        const corruptedCiphertext = new Uint8Array(ciphertext);
+        const mid = Math.floor(corruptedCiphertext.length / 2);
+        corruptedCiphertext[mid] ^= 0xFF;
+        corruptedCiphertext[mid + 1] ^= 0xAA;
+        corruptedCiphertext[mid + 2] ^= 0x55;
+
+        // Decapsulation should NOT throw (implicit rejection per FIPS 203)
+        // but should return a different shared secret
+        const recoveredSecret = await impl.decapsulate(secretKey, corruptedCiphertext);
+
+        // The recovered secret must differ from the original shared secret
+        expect(Buffer.from(recoveredSecret).toString('hex'))
+          .not.toBe(Buffer.from(sharedSecret).toString('hex'));
+
+        // The recovered secret should still be 32 bytes
+        expect(recoveredSecret.length).toBe(32);
+      });
+    }
+  });
+
+  describe('Seed edge cases', () => {
+    const variantList = [
+      { name: 'ML-KEM-512', impl: ml_kem512 },
+      { name: 'ML-KEM-768', impl: ml_kem768 },
+      { name: 'ML-KEM-1024', impl: ml_kem1024 },
+    ] as const;
+
+    for (const { name, impl } of variantList) {
+      it(`${name}: all-zero seed (64 bytes) produces valid key pair`, async () => {
+        const seed = new Uint8Array(64).fill(0x00);
+        const { publicKey, secretKey } = await impl.keygen(seed);
+
+        expect(publicKey).toBeInstanceOf(Uint8Array);
+        expect(secretKey).toBeInstanceOf(Uint8Array);
+        expect(publicKey.length).toBe(impl.params.publicKeyBytes);
+        expect(secretKey.length).toBe(impl.params.secretKeyBytes);
+
+        // Verify the key pair works for encaps/decaps
+        const { ciphertext, sharedSecret } = await impl.encapsulate(publicKey);
+        const recovered = await impl.decapsulate(secretKey, ciphertext);
+        expect(recovered).toEqual(sharedSecret);
+      });
+
+      it(`${name}: all-0xFF seed (64 bytes) produces valid key pair`, async () => {
+        const seed = new Uint8Array(64).fill(0xFF);
+        const { publicKey, secretKey } = await impl.keygen(seed);
+
+        expect(publicKey).toBeInstanceOf(Uint8Array);
+        expect(secretKey).toBeInstanceOf(Uint8Array);
+        expect(publicKey.length).toBe(impl.params.publicKeyBytes);
+        expect(secretKey.length).toBe(impl.params.secretKeyBytes);
+
+        // Verify the key pair works for encaps/decaps
+        const { ciphertext, sharedSecret } = await impl.encapsulate(publicKey);
+        const recovered = await impl.decapsulate(secretKey, ciphertext);
+        expect(recovered).toEqual(sharedSecret);
+      });
+
+      it(`${name}: all-zero and all-0xFF seeds produce different key pairs`, async () => {
+        const zeroSeed = new Uint8Array(64).fill(0x00);
+        const ffSeed = new Uint8Array(64).fill(0xFF);
+
+        const keypair1 = await impl.keygen(zeroSeed);
+        const keypair2 = await impl.keygen(ffSeed);
+
+        expect(keypair1.publicKey).not.toEqual(keypair2.publicKey);
+        expect(keypair1.secretKey).not.toEqual(keypair2.secretKey);
+      });
+    }
+  });
+
+  describe('Key sizes match FIPS 203 parameters for all variants', () => {
+    const expectedSizes = [
+      {
+        name: 'ML-KEM-512',
+        impl: ml_kem512,
+        pk: 800,
+        sk: 1632,
+        ct: 768,
+        ss: 32,
+      },
+      {
+        name: 'ML-KEM-768',
+        impl: ml_kem768,
+        pk: 1184,
+        sk: 2400,
+        ct: 1088,
+        ss: 32,
+      },
+      {
+        name: 'ML-KEM-1024',
+        impl: ml_kem1024,
+        pk: 1568,
+        sk: 3168,
+        ct: 1568,
+        ss: 32,
+      },
+    ] as const;
+
+    for (const { name, impl, pk, sk, ct, ss } of expectedSizes) {
+      it(`${name}: generated key and ciphertext sizes match FIPS 203 spec`, async () => {
+        const { publicKey, secretKey } = await impl.keygen();
+        expect(publicKey.length).toBe(pk);
+        expect(secretKey.length).toBe(sk);
+
+        const { ciphertext, sharedSecret } = await impl.encapsulate(publicKey);
+        expect(ciphertext.length).toBe(ct);
+        expect(sharedSecret.length).toBe(ss);
+      });
+    }
+  });
 });
 
 describe('ML-KEM Initialization', () => {

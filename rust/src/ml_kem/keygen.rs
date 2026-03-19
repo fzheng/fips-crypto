@@ -1,6 +1,16 @@
-//! ML-KEM Key Generation (Algorithm 15 in FIPS 203)
+//! ML-KEM Key Generation -- FIPS 203 Algorithm 16 (ML-KEM.KeyGen_internal)
 //!
 //! Generates an encapsulation key (public key) and decapsulation key (secret key).
+//!
+//! The key generation process:
+//! 1. Generate (or accept) 64 bytes of randomness: d (32 bytes) || z (32 bytes)
+//! 2. Run K-PKE.KeyGen(d) to produce the internal PKE keypair (ek_pke, dk_pke)
+//! 3. Construct the ML-KEM decapsulation key as: dk_pke || ek || H(ek) || z
+//!    - dk_pke: the serialized secret vector s_hat (in NTT form)
+//!    - ek: the public encapsulation key (t_hat || rho)
+//!    - H(ek): SHA3-256 hash of ek, used during decapsulation
+//!    - z: implicit rejection randomness, used to derive a pseudorandom
+//!      shared secret when ciphertext validation fails (CCA security)
 
 use crate::ml_kem::params::MlKemParams;
 use crate::ml_kem::MlKemKeyPair;
@@ -9,12 +19,14 @@ use crate::primitives::random::random_bytes;
 use crate::primitives::sha3::{g, h};
 use wasm_bindgen::JsError;
 
-/// ML-KEM key generation
+/// ML-KEM key generation -- FIPS 203 Algorithm 16 (ML-KEM.KeyGen_internal).
 ///
 /// Generates an encapsulation key (ek) and decapsulation key (dk).
 ///
 /// # Arguments
-/// * `seed` - Optional 64-byte seed for deterministic key generation (for testing)
+/// * `seed` - Optional 64-byte seed for deterministic key generation (for testing).
+///            The first 32 bytes are `d` (used by K-PKE.KeyGen), and the last 32
+///            bytes are `z` (implicit rejection randomness).
 /// * `params` - The ML-KEM parameter set to use
 ///
 /// # Returns
@@ -54,6 +66,11 @@ pub fn ml_kem_keygen<const K: usize>(
     let ek = ek_pke.clone();
 
     // Construct the decapsulation key: dk_pke || ek || H(ek) || z
+    // This structure allows decapsulation to:
+    // - Decrypt with dk_pke
+    // - Re-encrypt with ek for ciphertext comparison
+    // - Use H(ek) in the G hash derivation
+    // - Use z for implicit rejection
     let mut dk = Vec::with_capacity(params.dk_bytes);
     dk.extend_from_slice(&dk_pke);
     dk.extend_from_slice(&ek_pke);
@@ -63,19 +80,31 @@ pub fn ml_kem_keygen<const K: usize>(
     Ok(MlKemKeyPair { ek, dk })
 }
 
-/// K-PKE Key Generation (Algorithm 13 in FIPS 203)
+/// K-PKE Key Generation -- FIPS 203 Algorithm 13 (K-PKE.KeyGen).
 ///
-/// Generates the internal PKE key pair used by ML-KEM.
+/// Generates the internal PKE key pair used by ML-KEM:
+/// 1. Derive (rho, sigma) = G(d) where rho seeds matrix A, sigma seeds secrets
+/// 2. Sample matrix A_hat from rho (already in NTT form via SampleNTT)
+/// 3. Sample secret vector s and error vector e using CBD_eta1(sigma, ...)
+/// 4. Compute t_hat = A_hat * s_hat + e_hat in NTT domain
+/// 5. Encode ek = t_hat || rho and dk = s_hat
+///
+/// The to_mont() call after mul_vec is critical: basemul computes
+/// a_i * b_i * R^{-1} for each coefficient pair, so A * s has an extra
+/// R^{-1} factor. Calling to_mont() multiplies every coefficient by R
+/// (via fqmul with R^2), which cancels the R^{-1}. This ensures
+/// t_hat = A * s + e is in proper NTT form, consistent with the
+/// representation of A and e.
 fn k_pke_keygen<const K: usize>(
     d: &[u8],
     params: &MlKemParams,
 ) -> Result<(Vec<u8>, Vec<u8>), JsError> {
-    // (ρ, σ) ← G(d)
+    // (rho, sigma) <- G(d)
     let g_output = g(d);
     let rho = &g_output[..32];
     let sigma = &g_output[32..64];
 
-    // Sample matrix A from ρ (in NTT form)
+    // Sample matrix A from rho (in NTT form)
     let a_hat = PolyMat::sample_uniform(rho, K, false);
 
     // Sample secret vector s
@@ -105,7 +134,7 @@ fn k_pke_keygen<const K: usize>(
     t_hat = t_hat.add(&e_hat);
     t_hat.reduce();
 
-    // Encode public key: t || ρ
+    // Encode public key: t || rho
     let mut ek_pke = t_hat.to_bytes();
     ek_pke.extend_from_slice(rho);
 
@@ -119,6 +148,7 @@ fn k_pke_keygen<const K: usize>(
 mod tests {
     use super::*;
     use crate::ml_kem::params::{ML_KEM_512, ML_KEM_768, ML_KEM_1024, MLKEM512_K, MLKEM768_K, MLKEM1024_K};
+    use crate::primitives::sha3::h;
 
     #[test]
     fn test_keygen_mlkem512() {
@@ -158,5 +188,62 @@ mod tests {
         let keypair2 = ml_kem_keygen::<MLKEM768_K>(Some(&seed2), &ML_KEM_768).unwrap();
         assert_ne!(keypair1.ek, keypair2.ek);
         assert_ne!(keypair1.dk, keypair2.dk);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_keygen_seed_too_short() {
+        // A 32-byte seed should be rejected (need at least 64)
+        // JsError::new panics on non-wasm targets, so we expect a panic
+        let short_seed = [0x42u8; 32];
+        let _ = ml_kem_keygen::<MLKEM768_K>(Some(&short_seed), &ML_KEM_768);
+    }
+
+    #[test]
+    fn test_keygen_dk_structure() {
+        // Verify dk = dk_pke || ek || H(ek) || z
+        let seed = [0x55u8; 64];
+        let z = &seed[32..64];
+        let keypair = ml_kem_keygen::<MLKEM768_K>(Some(&seed), &ML_KEM_768).unwrap();
+
+        let dk = &keypair.dk;
+        let ek = &keypair.ek;
+        let k = MLKEM768_K;
+
+        let dk_pke_len = 384 * k;
+        let ek_len = ML_KEM_768.ek_bytes;
+
+        // Verify total length
+        assert_eq!(dk.len(), dk_pke_len + ek_len + 32 + 32);
+
+        // Verify ek is embedded in dk
+        let ek_in_dk = &dk[dk_pke_len..dk_pke_len + ek_len];
+        assert_eq!(ek_in_dk, ek.as_slice(), "ek should be embedded in dk");
+
+        // Verify H(ek) is correct
+        let h_ek_in_dk = &dk[dk_pke_len + ek_len..dk_pke_len + ek_len + 32];
+        let computed_h_ek = h(ek);
+        assert_eq!(h_ek_in_dk, &computed_h_ek, "H(ek) mismatch in dk");
+
+        // Verify z is at the end
+        let z_in_dk = &dk[dk_pke_len + ek_len + 32..];
+        assert_eq!(z_in_dk, z, "z mismatch in dk");
+    }
+
+    #[test]
+    fn test_keygen_ek_has_rho() {
+        // Verify last 32 bytes of ek match rho (derived from G(d))
+        let seed = [0x77u8; 64];
+        let d = &seed[..32];
+        let keypair = ml_kem_keygen::<MLKEM768_K>(Some(&seed), &ML_KEM_768).unwrap();
+
+        // rho is the first 32 bytes of G(d)
+        use crate::primitives::sha3::g;
+        let g_output = g(d);
+        let rho = &g_output[..32];
+
+        // Last 32 bytes of ek should be rho
+        let ek_rho = &keypair.ek[keypair.ek.len() - 32..];
+        assert_eq!(ek_rho, rho, "Last 32 bytes of ek should be rho");
     }
 }

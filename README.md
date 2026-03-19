@@ -346,18 +346,41 @@ fips-crypto/
 │   ├── ml-dsa.ts            # ML-DSA wrapper
 │   └── slh-dsa.ts           # SLH-DSA wrapper
 ├── tests/                   # Test suite
-│   ├── unit/                # Unit tests
-│   └── vectors/             # NIST test vectors
+│   └── unit/                # Unit + compliance tests
+│       ├── ml-kem.test.ts   # ML-KEM unit tests
+│       ├── ml-kem-compliance.test.ts  # Cross-library FIPS 203 verification
+│       └── ...              # Other unit tests
 ├── pkg/                     # Built WASM (generated)
 └── dist/                    # Built TypeScript (generated)
 ```
 
-### Running Rust Tests
+### Running Tests
 
 ```bash
-cd rust
+# Run all JavaScript/TypeScript tests (unit + compliance)
+npm test
+
+# Run Rust tests
 cargo test
+
+# Run tests with coverage
+npm run test:coverage
 ```
+
+### Test Suite
+
+The project has **374 tests** across two layers:
+
+| Layer | Tests | Description |
+|-------|-------|-------------|
+| Rust (`cargo test`) | 68 | NTT, polynomial arithmetic, keygen, encapsulate, decapsulate, SHA-3 |
+| JS/TS (`npm test`) | 306 | Unit tests, edge cases, stress tests, FIPS 203 KAT vector compliance |
+
+The JS test suite includes **27 FIPS 203 compliance tests** that verify our ML-KEM implementation against pre-generated Known Answer Test (KAT) vectors produced by an independent FIPS 203 implementation. These tests prove correctness by:
+
+- Decapsulating externally generated ciphertexts and verifying the recovered shared secret matches
+- Encapsulating with externally generated public keys and verifying roundtrip consistency
+- Validating key and ciphertext sizes match FIPS 203 specifications for all three parameter sets (512, 768, 1024)
 
 ### Adding New Features
 
@@ -436,6 +459,12 @@ This library implements algorithms standardized by NIST:
 - [FIPS 203](https://csrc.nist.gov/pubs/fips/203/final) - ML-KEM (August 2024)
 - [FIPS 204](https://csrc.nist.gov/pubs/fips/204/final) - ML-DSA (August 2024)
 - [FIPS 205](https://csrc.nist.gov/pubs/fips/205/final) - SLH-DSA (August 2024)
+
+### Compliance Verification
+
+ML-KEM compliance is verified through Known Answer Tests (KAT): pre-generated key pairs, ciphertexts, and shared secrets produced by an independent FIPS 203 implementation are included as static test vectors. Our library must successfully decapsulate each ciphertext and recover the identical shared secret. This covers all three parameter sets (ML-KEM-512, ML-KEM-768, ML-KEM-1024).
+
+The Rust implementation includes detailed references to specific FIPS 203 algorithm numbers (Algorithms 7-18) in source code comments.
 
 ### Migration Timeline
 
