@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/fzheng/fips-crypto/actions/workflows/ci.yml/badge.svg)](https://github.com/fzheng/fips-crypto/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/fips-crypto.svg)](https://www.npmjs.com/package/fips-crypto)
-[![license](https://img.shields.io/npm/l/fips-crypto.svg)](https://github.com/fzheng/fips-crypto/blob/main/LICENSE)
+[![license](https://img.shields.io/npm/l/fips-crypto.svg?color=blue)](https://github.com/fzheng/fips-crypto/blob/main/LICENSE)
 [![FIPS 203](https://img.shields.io/badge/FIPS%20203-ML--KEM-blue)](https://csrc.nist.gov/pubs/fips/203/final)
 
 A post-quantum cryptography library for JavaScript/TypeScript implementing NIST FIPS standards.
