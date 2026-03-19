@@ -55,5 +55,11 @@ jobs:
       - name: Build WASM + TypeScript
         run: npm run build
 
-      - name: Run JS tests
-        run: npm test
+      - name: Run JS tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage/coverage-final.json
+          token: ${{ secrets.CODECOV_TOKEN }}
