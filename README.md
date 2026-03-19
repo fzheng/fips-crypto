@@ -37,7 +37,7 @@ Built with Rust and WebAssembly for high performance in both Node.js and browser
 
 ## Installation
 
-### From npm (when published)
+### From npm
 
 ```bash
 npm install fips-crypto
@@ -299,20 +299,11 @@ cd fips-crypto
 # Install Node.js dependencies
 npm install
 
-# Build the WASM module (this compiles Rust to WebAssembly)
-wasm-pack build rust --target bundler --release
-
-# Build TypeScript
-npm run build:ts
-
-# (Optional) Optimize WASM size
-wasm-opt -O3 pkg/fips_crypto_wasm_bg.wasm -o pkg/fips_crypto_wasm_bg.wasm
+# Build everything (WASM + TypeScript)
+npm run build
 
 # Run tests
 npm test
-
-# Run tests with coverage
-npm run test:coverage
 ```
 
 ### Build Scripts
