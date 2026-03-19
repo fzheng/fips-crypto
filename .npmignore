@@ -1,0 +1,13 @@
+# Only ignore things that should NOT be in the npm package.
+# The "files" field in package.json controls what IS included.
+# This file exists to prevent .gitignore from excluding dist/ and pkg/.
+
+rust/
+src/
+tests/
+benchmarks/
+target/
+pkg-node/
+.claude/
+.github/
+*.tgz

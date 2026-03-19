@@ -1,6 +1,6 @@
 {
   "name": "fips-crypto",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Post-quantum cryptography library implementing FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), and FIPS 205 (SLH-DSA)",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -29,12 +29,11 @@
     }
   },
   "files": [
-    "dist",
-    "pkg"
+    "dist"
   ],
   "scripts": {
     "build:wasm": "wasm-pack build rust --target bundler --release --out-dir ../pkg && wasm-pack build rust --target nodejs --release --out-dir ../pkg-node",
-    "build:ts": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && cp -r pkg dist/pkg",
+    "build:ts": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && cp -r pkg dist/pkg && rm -f dist/pkg/.gitignore",
     "build": "npm run build:wasm && npm run build:ts",
     "test": "vitest run",
     "test:watch": "vitest",
