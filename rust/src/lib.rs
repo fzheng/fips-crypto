@@ -38,7 +38,7 @@
 //!
 //! ## License
 //!
-//! GPL-3.0 License
+//! MIT License
 
 use wasm_bindgen::prelude::*;
 

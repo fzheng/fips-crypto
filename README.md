@@ -444,7 +444,7 @@ Per NIST IR 8547, organizations should:
 
 ## License
 
-GPL-3.0 license
+MIT License
 
 ---
 

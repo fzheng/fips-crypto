@@ -50,7 +50,7 @@
  * - ML-KEM implements implicit rejection for CCA security
  *
  * @author Feng Zheng
- * @license GPL-3.0
+ * @license MIT
  * @see https://github.com/fzheng/fips-crypto
  * @see https://csrc.nist.gov/projects/post-quantum-cryptography
  *

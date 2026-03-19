@@ -5,7 +5,7 @@ members = ["rust"]
 [workspace.package]
 version = "0.3.0"
 edition = "2024"
-license = "GPL-3.0-or-later"
+license = "MIT"
 authors = ["Feng Zheng <fzheng@users.noreply.github.com>"]
 repository = "https://github.com/fzheng/fips-crypto"
 
