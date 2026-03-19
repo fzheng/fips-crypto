@@ -99,7 +99,9 @@ fn k_pke_keygen<const K: usize>(
     e_hat.to_ntt();
 
     // Compute t = A * s + e (in NTT form)
+    // mul_vec uses basemul which introduces R^{-1}; to_mont cancels it
     let mut t_hat = a_hat.mul_vec(&s_hat);
+    t_hat.to_mont();
     t_hat = t_hat.add(&e_hat);
     t_hat.reduce();
 

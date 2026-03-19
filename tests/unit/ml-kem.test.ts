@@ -14,24 +14,11 @@ import {
   ml_kem768,
   ml_kem1024,
   initMlKem,
-  FipsCryptoError,
 } from '../../src/index.js';
-
-// Check if WASM is available and working
-let wasmAvailable = false;
-let wasmError: string | null = null;
 
 describe('ML-KEM', () => {
   beforeAll(async () => {
-    try {
-      await init();
-      // Test if WASM actually works by generating a key
-      await ml_kem768.keygen();
-      wasmAvailable = true;
-    } catch (e) {
-      wasmAvailable = false;
-      wasmError = e instanceof Error ? e.message : String(e);
-    }
+    await init();
   });
 
   // ==========================================================================
@@ -100,7 +87,7 @@ describe('ML-KEM', () => {
   // Functional Tests (WASM required)
   // ==========================================================================
   describe('ML-KEM-512 (functional)', () => {
-    it.skipIf(!wasmAvailable)('generates valid key pairs', async () => {
+    it('generates valid key pairs', async () => {
       const { publicKey, secretKey } = await ml_kem512.keygen();
       expect(publicKey).toBeInstanceOf(Uint8Array);
       expect(secretKey).toBeInstanceOf(Uint8Array);
@@ -108,14 +95,14 @@ describe('ML-KEM', () => {
       expect(secretKey.length).toBe(ml_kem512.params.secretKeyBytes);
     });
 
-    it.skipIf(!wasmAvailable)('generates different key pairs on each call', async () => {
+    it('generates different key pairs on each call', async () => {
       const keypair1 = await ml_kem512.keygen();
       const keypair2 = await ml_kem512.keygen();
       expect(keypair1.publicKey).not.toEqual(keypair2.publicKey);
       expect(keypair1.secretKey).not.toEqual(keypair2.secretKey);
     });
 
-    it.skipIf(!wasmAvailable)('encapsulates and decapsulates correctly', async () => {
+    it('encapsulates and decapsulates correctly', async () => {
       const { publicKey, secretKey } = await ml_kem512.keygen();
       const { ciphertext, sharedSecret } = await ml_kem512.encapsulate(publicKey);
       const recovered = await ml_kem512.decapsulate(secretKey, ciphertext);
@@ -123,16 +110,13 @@ describe('ML-KEM', () => {
     });
 
     it('rejects invalid public key length', async () => {
-      if (!wasmAvailable) {
-        // Even without WASM, this should fail early with validation
-        const invalidKey = new Uint8Array(100);
-        await expect(ml_kem512.encapsulate(invalidKey)).rejects.toThrow();
-      }
+      const invalidKey = new Uint8Array(100);
+      await expect(ml_kem512.encapsulate(invalidKey)).rejects.toThrow();
     });
   });
 
   describe('ML-KEM-768 (functional)', () => {
-    it.skipIf(!wasmAvailable)('generates valid key pairs', async () => {
+    it('generates valid key pairs', async () => {
       const { publicKey, secretKey } = await ml_kem768.keygen();
       expect(publicKey).toBeInstanceOf(Uint8Array);
       expect(secretKey).toBeInstanceOf(Uint8Array);
@@ -140,14 +124,14 @@ describe('ML-KEM', () => {
       expect(secretKey.length).toBe(ml_kem768.params.secretKeyBytes);
     });
 
-    it.skipIf(!wasmAvailable)('completes full key exchange', async () => {
+    it('completes full key exchange', async () => {
       const { publicKey, secretKey } = await ml_kem768.keygen();
       const { ciphertext, sharedSecret: bobSecret } = await ml_kem768.encapsulate(publicKey);
       const aliceSecret = await ml_kem768.decapsulate(secretKey, ciphertext);
       expect(aliceSecret).toEqual(bobSecret);
     });
 
-    it.skipIf(!wasmAvailable)('produces deterministic output with seed', async () => {
+    it('produces deterministic output with seed', async () => {
       const seed = new Uint8Array(64).fill(0x42);
       const keypair1 = await ml_kem768.keygen(seed);
       const keypair2 = await ml_kem768.keygen(seed);
@@ -157,7 +141,7 @@ describe('ML-KEM', () => {
   });
 
   describe('ML-KEM-1024 (functional)', () => {
-    it.skipIf(!wasmAvailable)('generates valid key pairs', async () => {
+    it('generates valid key pairs', async () => {
       const { publicKey, secretKey } = await ml_kem1024.keygen();
       expect(publicKey).toBeInstanceOf(Uint8Array);
       expect(secretKey).toBeInstanceOf(Uint8Array);
@@ -165,7 +149,7 @@ describe('ML-KEM', () => {
       expect(secretKey.length).toBe(ml_kem1024.params.secretKeyBytes);
     });
 
-    it.skipIf(!wasmAvailable)('completes full key exchange', async () => {
+    it('completes full key exchange', async () => {
       const { publicKey, secretKey } = await ml_kem1024.keygen();
       const { ciphertext, sharedSecret: bobSecret } = await ml_kem1024.encapsulate(publicKey);
       const aliceSecret = await ml_kem1024.decapsulate(secretKey, ciphertext);

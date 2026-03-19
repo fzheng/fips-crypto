@@ -126,13 +126,11 @@ fn encode_message(poly: &Poly) -> [u8; 32] {
     let q = crate::primitives::ntt::MLKEM_Q;
 
     for i in 0..256 {
-        // Coefficient is closer to q/2 than to 0 if |coeff - q/2| < |coeff|
-        // Equivalently: 2*coeff > q/2, i.e., 4*coeff > q
-        let coeff = poly.coeffs[i] as i32;
-        let coeff_pos = if coeff < 0 { coeff + q } else { coeff };
+        // Normalize coefficient to [0, q)
+        let coeff = (poly.coeffs[i] as i32).rem_euclid(q);
 
-        // Compute (4 * coeff + q) / (2 * q) which rounds to 0 or 1
-        let bit = ((coeff_pos * 2 + q / 2) / q) & 1;
+        // Compress to 1 bit: round(2x/q) mod 2
+        let bit = ((coeff * 2 + q / 2) / q) & 1;
 
         m[i / 8] |= (bit as u8) << (i % 8);
     }

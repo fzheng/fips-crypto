@@ -4,7 +4,7 @@
 //! where q = 3329 for ML-KEM and n = 256.
 
 use crate::primitives::ntt::{
-    mlkem_barrett_reduce, mlkem_basemul, mlkem_ntt, mlkem_ntt_inv, MLKEM_Q, N,
+    mlkem_barrett_reduce, mlkem_basemul, mlkem_ntt, mlkem_ntt_inv, mlkem_to_mont, MLKEM_Q, N,
 };
 use crate::primitives::sha3::{prf, xof};
 use zeroize::{Zeroize, ZeroizeOnDrop};
@@ -50,10 +50,17 @@ impl Poly {
         Self { coeffs: result }
     }
 
-    /// Reduce all coefficients modulo q
+    /// Reduce all coefficients to [0, q)
     pub fn reduce(&mut self) {
         for coeff in self.coeffs.iter_mut() {
+            // Barrett reduce first to get close to [0, q)
             *coeff = mlkem_barrett_reduce(*coeff as i32);
+            // Conditional subtraction/addition to normalize to [0, q)
+            let mut c = *coeff;
+            c += (c >> 15) & (MLKEM_Q as i16); // add q if negative
+            c -= MLKEM_Q as i16;
+            c += (c >> 15) & (MLKEM_Q as i16); // add q if negative
+            *coeff = c;
         }
     }
 
@@ -65,6 +72,13 @@ impl Poly {
     /// Convert from NTT representation
     pub fn from_ntt(&mut self) {
         mlkem_ntt_inv(&mut self.coeffs);
+    }
+
+    /// Convert coefficients to Montgomery form (multiply by R mod q)
+    pub fn to_mont(&mut self) {
+        for coeff in self.coeffs.iter_mut() {
+            *coeff = mlkem_to_mont(*coeff);
+        }
     }
 
     /// Multiply two polynomials in NTT domain
@@ -322,11 +336,11 @@ impl Poly {
 /// Compress a coefficient to d bits
 #[inline]
 fn compress_coeff(x: i16, d: usize) -> i32 {
-    let x = x as i32;
-    let q = MLKEM_Q;
+    // Normalize to [0, q)
+    let x = (x as i32).rem_euclid(MLKEM_Q);
     let two_d = 1i32 << d;
     // Compute round((2^d / q) * x) mod 2^d
-    ((((x as i64) << d) + (q as i64 / 2)) / (q as i64)) as i32 & (two_d - 1)
+    ((((x as i64) << d) + (MLKEM_Q as i64 / 2)) / (MLKEM_Q as i64)) as i32 & (two_d - 1)
 }
 
 /// Decompress a d-bit value back to a coefficient
@@ -341,17 +355,17 @@ fn decompress_coeff(x: i16, d: usize) -> i16 {
 
 /// Sample coefficients using CBD with η=2
 fn sample_cbd2(buf: &[u8], coeffs: &mut [i16; N]) {
-    for i in 0..N / 4 {
+    for i in 0..N / 8 {
         let t = u32::from_le_bytes([buf[4 * i], buf[4 * i + 1], buf[4 * i + 2], buf[4 * i + 3]]);
 
         let d = t & 0x55555555;
         let e = (t >> 1) & 0x55555555;
         let f = d + e;
 
-        for j in 0..4 {
-            let a = ((f >> (8 * j)) & 0x3) as i16;
-            let b = ((f >> (8 * j + 2)) & 0x3) as i16;
-            coeffs[4 * i + j] = a - b;
+        for j in 0..8 {
+            let a = ((f >> (4 * j)) & 0x3) as i16;
+            let b = ((f >> (4 * j + 2)) & 0x3) as i16;
+            coeffs[8 * i + j] = a - b;
         }
     }
 }
@@ -422,6 +436,13 @@ impl PolyVec {
     pub fn from_ntt(&mut self) {
         for poly in self.polys.iter_mut() {
             poly.from_ntt();
+        }
+    }
+
+    /// Convert all polynomials to Montgomery form
+    pub fn to_mont(&mut self) {
+        for poly in self.polys.iter_mut() {
+            poly.to_mont();
         }
     }
 
@@ -560,16 +581,18 @@ mod tests {
                 let orig = poly.coeffs[i] as i32;
                 let dec = decompressed.coeffs[i] as i32;
                 // The error should be bounded by q / 2^(d+1)
-                let max_error = MLKEM_Q / (1 << d);
-                let error = (orig - dec).abs().min((orig - dec + MLKEM_Q).abs());
+                let max_error = (MLKEM_Q + (1 << d)) / (1 << (d + 1));
+                let diff = (orig - dec).rem_euclid(MLKEM_Q);
+                let error = diff.min(MLKEM_Q - diff);
                 assert!(
                     error <= max_error,
-                    "d={}, i={}, orig={}, dec={}, error={}",
+                    "d={}, i={}, orig={}, dec={}, error={}, max_error={}",
                     d,
                     i,
                     orig,
                     dec,
-                    error
+                    error,
+                    max_error,
                 );
             }
         }

@@ -28,54 +28,35 @@ pub const MLKEM_ZETA: i32 = 17;
 /// Primitive 512th root of unity for ML-DSA (ζ = 1753)
 pub const MLDSA_ZETA: i32 = 1753;
 
-/// Precomputed powers of ζ for ML-KEM NTT (in bit-reversed order)
+/// Precomputed powers of ζ for ML-KEM NTT (in Montgomery form, bit-reversed order)
+/// From the PQ-Crystals Kyber/ML-KEM reference implementation.
 pub const MLKEM_ZETAS: [i16; 128] = [
-    1, 1729, 2580, 3289, 2642, 630, 1897, 848,
-    1062, 1919, 193, 797, 2786, 3260, 569, 1746,
-    296, 2447, 1339, 1476, 3046, 56, 2240, 1333,
-    1426, 2094, 535, 2882, 2393, 2879, 1974, 821,
-    289, 331, 3253, 1756, 1197, 2304, 2277, 2055,
-    650, 1977, 2513, 632, 2865, 33, 1320, 1915,
-    2319, 1435, 807, 452, 1438, 2868, 1534, 2402,
-    2647, 2617, 1481, 648, 2474, 3110, 1227, 910,
-    17, 2761, 583, 2649, 1637, 723, 2288, 1100,
-    1409, 2662, 3281, 233, 756, 2156, 3015, 3050,
-    1703, 1651, 2789, 1789, 1847, 952, 1461, 2687,
-    939, 2308, 2437, 2388, 733, 2337, 268, 641,
-    1584, 2298, 2037, 3220, 375, 2549, 2090, 1645,
-    1063, 319, 2773, 757, 2099, 561, 2466, 2594,
-    2804, 1092, 403, 1026, 1143, 2150, 2775, 886,
-    1722, 1212, 1874, 1029, 2110, 2935, 885, 2154,
+    -1044,  -758,  -359, -1517,  1493,  1422,   287,   202,
+     -171,   622,  1577,   182,   962, -1202, -1474,  1468,
+      573, -1325,   264,   383,  -829,  1458, -1602,  -130,
+     -681,  1017,   732,   608, -1542,   411,  -205, -1571,
+     1223,   652,  -552,  1015, -1293,  1491,  -282, -1544,
+      516,    -8,  -320,  -666, -1618, -1162,   126,  1469,
+     -853,   -90,  -271,   830,   107, -1421,  -247,  -951,
+     -398,   961, -1508,  -725,   448, -1065,   677, -1275,
+    -1103,   430,   555,   843, -1251,   871,  1550,   105,
+      422,   587,   177,  -235,  -291,  -460,  1574,  1653,
+     -246,   778,  1159,  -147,  -777,  1483,  -602,  1119,
+    -1590,   644,  -872,   349,   418,   329,  -156,   -75,
+      817,  1097,   603,   610,  1322, -1285, -1465,   384,
+    -1215,  -136,  1218, -1335,  -874,   220, -1187, -1659,
+    -1185, -1530, -1278,   794, -1510,  -854,  -870,   478,
+     -108,  -308,   996,   991,   958, -1460,  1522,  1628,
 ];
 
-/// Precomputed powers of ζ^(-1) for ML-KEM inverse NTT
-pub const MLKEM_ZETAS_INV: [i16; 128] = [
-    1175, 2444, 394, 1219, 2300, 1455, 2117, 1607,
-    2443, 554, 1179, 2186, 2303, 2926, 2237, 525,
-    735, 863, 2768, 1230, 2572, 556, 3010, 2266,
-    1684, 1239, 780, 2954, 109, 1292, 1031, 1745,
-    2688, 2962, 2594, 2373, 1006, 3307, 2248, 1903,
-    2679, 1352, 1816, 464, 2697, 816, 1352, 2679,
-    1274, 1052, 1025, 1573, 76, 3040, 2040, 3312,
-    568, 680, 2746, 1692, 680, 2746, 1692, 2746,
-    219, 855, 2681, 1848, 712, 682, 927, 1795,
-    461, 1891, 2877, 2522, 1894, 1010, 1010, 1010,
-    2009, 2877, 2522, 1894, 1894, 1010, 1010, 1010,
-    2009, 2877, 2522, 1894, 1894, 1010, 1010, 1010,
-    2009, 2877, 2522, 1894, 1894, 1010, 1010, 1010,
-    2009, 2877, 2522, 1894, 1894, 1010, 1010, 1010,
-    2009, 2877, 2522, 1894, 1894, 1010, 1010, 1010,
-    2009, 2877, 2522, 1894, 1894, 1010, 1010, 1010,
-];
-
-/// Montgomery constant for ML-KEM: R = 2^16 mod q
-const MLKEM_MONT_R: i32 = 2285;
+/// Montgomery constant for ML-KEM: R^2 mod q (used for converting to Montgomery form)
+const MLKEM_MONT_R_SQ: i32 = 1353;
 
 /// Montgomery constant for ML-KEM: q^(-1) mod 2^16
 const MLKEM_QINV: i32 = 62209;
 
-/// n^(-1) mod q for ML-KEM inverse NTT scaling
-const MLKEM_N_INV: i32 = 3303;
+/// Inverse NTT scaling factor: mont^2 / 128 mod q = R^2 * 128^(-1) mod q
+const MLKEM_F: i32 = 1441;
 
 /// Barrett reduction constant for ML-KEM
 const MLKEM_BARRETT_MU: i32 = 20159; // floor(2^26 / q)
@@ -133,7 +114,7 @@ pub fn mlkem_ntt(coeffs: &mut [i16; N]) {
         len /= 2;
     }
 
-    // Reduce all coefficients
+    // Reduce all coefficients to a canonical range
     for coeff in coeffs.iter_mut() {
         *coeff = mlkem_barrett_reduce(*coeff as i32);
     }
@@ -149,21 +130,21 @@ pub fn mlkem_ntt_inv(coeffs: &mut [i16; N]) {
     while len <= 128 {
         let mut start = 0usize;
         while start < N {
-            let zeta = MLKEM_ZETAS[k] as i32;
+            let zeta = MLKEM_ZETAS[k];
             k = k.wrapping_sub(1);
 
             for j in start..(start + len) {
                 let t = coeffs[j];
-                coeffs[j] = t + coeffs[j + len];
-                coeffs[j + len] = mlkem_fqmul(zeta as i16, coeffs[j + len] - t);
+                coeffs[j] = mlkem_barrett_reduce(t as i32 + coeffs[j + len] as i32);
+                coeffs[j + len] = mlkem_fqmul(zeta, coeffs[j + len] - t);
             }
             start += 2 * len;
         }
         len *= 2;
     }
 
-    // Multiply by n^(-1) and reduce
-    let f = MLKEM_N_INV as i16;
+    // Multiply by mont^2/128 to undo Montgomery factor and scale by 1/128
+    let f = MLKEM_F as i16;
     for coeff in coeffs.iter_mut() {
         *coeff = mlkem_fqmul(f, *coeff);
     }
@@ -175,25 +156,29 @@ pub fn mlkem_ntt_inv(coeffs: &mut [i16; N]) {
 pub fn mlkem_basemul(a: &[i16; N], b: &[i16; N]) -> [i16; N] {
     let mut c = [0i16; N];
 
-    for i in 0..N/2 {
-        let zeta = MLKEM_ZETAS[64 + i] as i16;
+    for i in 0..N/4 {
+        let zeta = MLKEM_ZETAS[64 + i];
 
-        // First coefficient of the pair
-        c[2*i] = mlkem_fqmul(a[2*i], b[2*i]);
-        c[2*i] = c[2*i] + mlkem_fqmul(mlkem_fqmul(a[2*i+1], b[2*i+1]), zeta);
+        // First pair (using +zeta)
+        c[4*i]     = mlkem_fqmul(mlkem_fqmul(a[4*i+1], b[4*i+1]), zeta);
+        c[4*i]     = c[4*i] + mlkem_fqmul(a[4*i], b[4*i]);
+        c[4*i+1]   = mlkem_fqmul(a[4*i], b[4*i+1]);
+        c[4*i+1]   = c[4*i+1] + mlkem_fqmul(a[4*i+1], b[4*i]);
 
-        // Second coefficient of the pair
-        c[2*i+1] = mlkem_fqmul(a[2*i], b[2*i+1]);
-        c[2*i+1] = c[2*i+1] + mlkem_fqmul(a[2*i+1], b[2*i]);
+        // Second pair (using -zeta)
+        c[4*i+2]   = mlkem_fqmul(mlkem_fqmul(a[4*i+3], b[4*i+3]), -zeta);
+        c[4*i+2]   = c[4*i+2] + mlkem_fqmul(a[4*i+2], b[4*i+2]);
+        c[4*i+3]   = mlkem_fqmul(a[4*i+2], b[4*i+3]);
+        c[4*i+3]   = c[4*i+3] + mlkem_fqmul(a[4*i+3], b[4*i+2]);
     }
 
     c
 }
 
-/// Convert coefficient to Montgomery form
+/// Convert coefficient to Montgomery form (multiply by R mod q)
 #[inline]
 pub fn mlkem_to_mont(a: i16) -> i16 {
-    mlkem_fqmul(a, MLKEM_MONT_R as i16)
+    mlkem_fqmul(a, MLKEM_MONT_R_SQ as i16)
 }
 
 /// Reduce coefficient to [0, q) range
@@ -230,22 +215,88 @@ mod tests {
         assert!(r.abs() < MLKEM_Q as i16);
     }
 
+/// Compute modular exponentiation
+    fn pow_mod(mut base: i64, mut exp: u64, modulus: i64) -> i64 {
+        let mut result = 1i64;
+        base %= modulus;
+        while exp > 0 {
+            if exp & 1 == 1 {
+                result = result * base % modulus;
+            }
+            exp >>= 1;
+            base = base * base % modulus;
+        }
+        result
+    }
+
+    /// Compute 7-bit bit reversal
+    fn brv7(x: usize) -> usize {
+        let mut result = 0;
+        let mut val = x;
+        for _ in 0..7 {
+            result = (result << 1) | (val & 1);
+            val >>= 1;
+        }
+        result
+    }
+
+    #[test]
+    fn test_zetas_table() {
+        // Verify MLKEM_ZETAS against computed values
+        let q = MLKEM_Q as i64;
+        let zeta: i64 = 17; // primitive 256th root of unity
+        let r = pow_mod(2, 16, q); // Montgomery constant R = 2^16 mod q
+
+        let mut correct_zetas = [0i16; 128];
+        for i in 0..128 {
+            let power = brv7(i);
+            let z = pow_mod(zeta, power as u64, q);
+            let z_mont = (z * r) % q;
+            let z_centered = if z_mont > q / 2 { z_mont - q } else { z_mont };
+            correct_zetas[i] = z_centered as i16;
+        }
+
+        // Print correct table for replacement
+        let mut mismatches = 0;
+        for i in 0..128 {
+            if MLKEM_ZETAS[i] != correct_zetas[i] {
+                mismatches += 1;
+            }
+        }
+        if mismatches > 0 {
+            eprintln!("Found {} mismatches. Correct table:", mismatches);
+            for row in 0..16 {
+                let vals: Vec<String> = (0..8).map(|col| format!("{:5}", correct_zetas[row * 8 + col])).collect();
+                eprintln!("    {},", vals.join(","));
+            }
+        }
+
+        for i in 0..128 {
+            assert_eq!(
+                MLKEM_ZETAS[i], correct_zetas[i],
+                "Zetas mismatch at index {}", i
+            );
+        }
+    }
+
     #[test]
     fn test_ntt_roundtrip() {
-        // Test that NTT followed by inverse NTT returns original polynomial
+        // Test NTT roundtrip using Montgomery form
+        // NTT → invNTT gives R * original (factor R from the Montgomery scaling)
+        // basemul introduces R^{-1} that cancels this in practice
         let mut poly = [0i16; N];
         for i in 0..N {
             poly[i] = (i as i16) % (MLKEM_Q as i16);
         }
         let original = poly;
-
         mlkem_ntt(&mut poly);
         mlkem_ntt_inv(&mut poly);
 
-        // Check that coefficients are equal mod q
+        const R_MOD_Q: i32 = 2285;
         for i in 0..N {
-            let diff = (poly[i] as i32 - original[i] as i32).rem_euclid(MLKEM_Q);
-            assert!(diff == 0 || diff == MLKEM_Q, "Mismatch at index {}: {} vs {}", i, poly[i], original[i]);
+            let expected = ((original[i] as i32) * R_MOD_Q).rem_euclid(MLKEM_Q);
+            let got = (poly[i] as i32).rem_euclid(MLKEM_Q);
+            assert_eq!(got, expected, "Montgomery roundtrip at index {}", i);
         }
     }
 

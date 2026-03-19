@@ -37,18 +37,9 @@ import {
   ErrorCodes,
 } from '../../src/index.js';
 
-// Check if WASM is available
-let wasmAvailable = false;
-
 describe('fips-crypto module', () => {
   beforeAll(async () => {
-    try {
-      await init();
-      await ml_kem768.keygen();
-      wasmAvailable = true;
-    } catch {
-      wasmAvailable = false;
-    }
+    await init();
   });
 
   describe('VERSION', () => {
@@ -62,8 +53,8 @@ describe('fips-crypto module', () => {
       expect(VERSION).toMatch(/^\d+\.\d+\.\d+$/);
     });
 
-    it('VERSION is 0.1.0', () => {
-      expect(VERSION).toBe('0.1.0');
+    it('VERSION is 0.2.0', () => {
+      expect(VERSION).toBe('0.2.0');
     });
   });
 
@@ -73,20 +64,20 @@ describe('fips-crypto module', () => {
       expect(typeof init).toBe('function');
     });
 
-    it.skipIf(!wasmAvailable)('init returns a Promise that resolves', async () => {
+    it('init returns a Promise that resolves', async () => {
       const result = init();
       expect(result).toBeInstanceOf(Promise);
       await result;
     });
 
-    it.skipIf(!wasmAvailable)('init is idempotent', async () => {
+    it('init is idempotent', async () => {
       await init();
       await init();
       await init();
       // Should not throw
     });
 
-    it.skipIf(!wasmAvailable)('init enables ML-KEM operations', async () => {
+    it('init enables ML-KEM operations', async () => {
       await init();
       const { publicKey } = await ml_kem768.keygen();
       expect(publicKey.length).toBe(ml_kem768.params.publicKeyBytes);
