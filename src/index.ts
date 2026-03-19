@@ -50,7 +50,7 @@
  * - ML-KEM implements implicit rejection for CCA security
  *
  * @author Feng Zheng
- * @license GPL-3.0
+ * @license MIT
  * @see https://github.com/fzheng/fips-crypto
  * @see https://csrc.nist.gov/projects/post-quantum-cryptography
  *
@@ -199,4 +199,4 @@ export async function init(): Promise<void> {
  * console.log(`Using fips-crypto v${VERSION}`);
  * ```
  */
-export const VERSION = '0.2.2';
+export const VERSION = '0.3.0';

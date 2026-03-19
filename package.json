@@ -1,6 +1,6 @@
 {
   "name": "fips-crypto",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Post-quantum cryptography library implementing FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), and FIPS 205 (SLH-DSA)",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -67,7 +67,7 @@
     "name": "Feng Zheng",
     "url": "https://github.com/fzheng"
   },
-  "license": "GPL-3.0",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/fzheng/fips-crypto/issues"
   },

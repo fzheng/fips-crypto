@@ -158,6 +158,36 @@ describe('ML-KEM', () => {
   });
 
   // ==========================================================================
+  // Input Validation Tests (all variants)
+  // ==========================================================================
+  describe('Input validation', () => {
+    const variantList = [
+      { name: 'ML-KEM-512', impl: ml_kem512 },
+      { name: 'ML-KEM-768', impl: ml_kem768 },
+      { name: 'ML-KEM-1024', impl: ml_kem1024 },
+    ] as const;
+
+    for (const { name, impl } of variantList) {
+      it(`${name}: rejects invalid public key length in encapsulate`, async () => {
+        const invalidKey = new Uint8Array(100);
+        await expect(impl.encapsulate(invalidKey)).rejects.toThrow('Invalid public key length');
+      });
+
+      it(`${name}: rejects invalid secret key length in decapsulate`, async () => {
+        const invalidSk = new Uint8Array(100);
+        const fakeCt = new Uint8Array(impl.params.ciphertextBytes);
+        await expect(impl.decapsulate(invalidSk, fakeCt)).rejects.toThrow('Invalid secret key length');
+      });
+
+      it(`${name}: rejects invalid ciphertext length in decapsulate`, async () => {
+        const { secretKey } = await impl.keygen();
+        const invalidCt = new Uint8Array(100);
+        await expect(impl.decapsulate(secretKey, invalidCt)).rejects.toThrow('Invalid ciphertext length');
+      });
+    }
+  });
+
+  // ==========================================================================
   // Stress and Edge Case Tests
   // ==========================================================================
   describe('Repeated encapsulation uniqueness', () => {

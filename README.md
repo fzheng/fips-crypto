@@ -1,5 +1,11 @@
 # fips-crypto
 
+[![CI](https://github.com/fzheng/fips-crypto/actions/workflows/ci.yml/badge.svg)](https://github.com/fzheng/fips-crypto/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/fips-crypto.svg)](https://www.npmjs.com/package/fips-crypto)
+[![license](https://img.shields.io/npm/l/fips-crypto.svg?color=blue)](https://github.com/fzheng/fips-crypto/blob/main/LICENSE)
+[![codecov](https://codecov.io/gh/fzheng/fips-crypto/graph/badge.svg)](https://codecov.io/gh/fzheng/fips-crypto)
+[![FIPS 203](https://img.shields.io/badge/FIPS%20203-ML--KEM-blue)](https://csrc.nist.gov/pubs/fips/203/final)
+
 A post-quantum cryptography library for JavaScript/TypeScript implementing NIST FIPS standards.
 
 Built with Rust and WebAssembly for high performance in both Node.js and browser environments.
@@ -322,38 +328,6 @@ npm test
 
 ## Development
 
-### Project Structure
-
-```
-fips-crypto/
-├── rust/                    # Rust source code
-│   ├── Cargo.toml
-│   └── src/
-│       ├── lib.rs           # WASM entry point
-│       ├── primitives/      # Cryptographic primitives
-│       │   ├── sha3.rs      # SHA-3/SHAKE
-│       │   ├── ntt.rs       # Number Theoretic Transform
-│       │   ├── polynomial.rs # Polynomial ring arithmetic
-│       │   ├── merkle.rs    # Merkle trees
-│       │   └── random.rs    # CSPRNG
-│       ├── ml_kem/          # FIPS 203 implementation
-│       ├── ml_dsa/          # FIPS 204 implementation
-│       └── slh_dsa/         # FIPS 205 implementation
-├── src/                     # TypeScript source
-│   ├── index.ts             # Main exports
-│   ├── types.ts             # Type definitions
-│   ├── ml-kem.ts            # ML-KEM wrapper
-│   ├── ml-dsa.ts            # ML-DSA wrapper
-│   └── slh-dsa.ts           # SLH-DSA wrapper
-├── tests/                   # Test suite
-│   └── unit/                # Unit + compliance tests
-│       ├── ml-kem.test.ts   # ML-KEM unit tests
-│       ├── ml-kem-compliance.test.ts  # Cross-library FIPS 203 verification
-│       └── ...              # Other unit tests
-├── pkg/                     # Built WASM (generated)
-└── dist/                    # Built TypeScript (generated)
-```
-
 ### Running Tests
 
 ```bash
@@ -369,18 +343,7 @@ npm run test:coverage
 
 ### Test Suite
 
-The project has **374 tests** across two layers:
-
-| Layer | Tests | Description |
-|-------|-------|-------------|
-| Rust (`cargo test`) | 68 | NTT, polynomial arithmetic, keygen, encapsulate, decapsulate, SHA-3 |
-| JS/TS (`npm test`) | 306 | Unit tests, edge cases, stress tests, FIPS 203 KAT vector compliance |
-
-The JS test suite includes **27 FIPS 203 compliance tests** that verify our ML-KEM implementation against pre-generated Known Answer Test (KAT) vectors produced by an independent FIPS 203 implementation. These tests prove correctness by:
-
-- Decapsulating externally generated ciphertexts and verifying the recovered shared secret matches
-- Encapsulating with externally generated public keys and verifying roundtrip consistency
-- Validating key and ciphertext sizes match FIPS 203 specifications for all three parameter sets (512, 768, 1024)
+The test suite covers both Rust (`cargo test`) and JavaScript/TypeScript (`npm test`) layers, including FIPS 203 KAT (Known Answer Test) vector compliance tests that verify our ML-KEM output against pre-generated vectors from an independent implementation.
 
 ### Adding New Features
 
@@ -475,13 +438,13 @@ Per NIST IR 8547, organizations should:
 
 ---
 
-## Author
+## Major Contributors
 
-**Feng Zheng** - [GitHub](https://github.com/fzheng)
+- **Feng Zheng** - [GitHub](https://github.com/fzheng)
 
 ## License
 
-GPL-3.0 license
+MIT License
 
 ---
 
