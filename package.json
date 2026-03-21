@@ -59,13 +59,10 @@
     "pqc",
     "ml-kem",
     "ml-dsa",
-    "slh-dsa",
     "fips-203",
     "fips-204",
-    "fips-205",
     "kyber",
     "dilithium",
-    "sphincs",
     "wasm",
     "webassembly"
   ],

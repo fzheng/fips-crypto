@@ -95,3 +95,24 @@ This compares the actual file hashes against the stored checksums. Any mismatch 
 ### npm Provenance
 
 Releases published via GitHub Actions use npm's `--provenance` flag, which creates a [Sigstore](https://www.sigstore.dev/) attestation linking the published package to the specific GitHub Actions workflow run, commit SHA, and repository. This is visible as a "Provenance" badge on the npm package page.
+
+### Checksums vs. Provenance: Threat Boundaries
+
+**Checksums** (`checksums.sha256`) protect against **post-publish corruption**: if a CDN or mirror serves modified files, the checksums will mismatch. However, checksums are included inside the package itself — an attacker who compromises the publish step can regenerate checksums to match their tampered binaries. Checksums alone **cannot** detect a compromised build pipeline or stolen npm token.
+
+**npm Provenance** (Sigstore attestation) protects against **build-origin spoofing**: the attestation cryptographically links the published tarball to a specific GitHub Actions workflow run, commit SHA, and repository. Even if an attacker steals the npm publish token, they cannot forge a valid Sigstore attestation from the legitimate GitHub Actions environment.
+
+To verify provenance:
+
+```bash
+npm audit signatures
+```
+
+**Defense in depth**: Use both. Checksums catch accidental corruption and CDN issues. Provenance catches deliberate supply chain attacks on the publish step. Neither protects against a compromised source repository (e.g., a malicious commit merged to `main`). For that, rely on code review and branch protection rules.
+
+| Threat | Checksums | Provenance |
+|--------|-----------|------------|
+| CDN/mirror corruption | Detects | No |
+| Stolen npm token | No | Detects |
+| Compromised CI environment | No | No |
+| Malicious source commit | No | No |

@@ -39,19 +39,12 @@ pub struct MlKemKeyPair {
 }
 
 /// ML-KEM encapsulation result
-#[derive(Clone)]
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct MlKemEncapsulation {
     /// Ciphertext
     pub ciphertext: Vec<u8>,
     /// Shared secret (32 bytes)
     pub shared_secret: [u8; 32],
-}
-
-impl MlKemEncapsulation {
-    /// Zeroize the shared secret on drop
-    pub fn zeroize(&mut self) {
-        self.shared_secret.zeroize();
-    }
 }
 
 // ============================================================================

@@ -83,10 +83,10 @@ pub fn ml_dsa_keygen(
     h_input.extend_from_slice(&xi);
     h_input.push(params.k as u8);
     h_input.push(params.l as u8);
-    let h_output = shake256(&h_input, 128);
+    let mut h_output = shake256(&h_input, 128);
     let rho: [u8; 32] = h_output[0..32].try_into().unwrap();
-    let rho_prime: [u8; 64] = h_output[32..96].try_into().unwrap();
-    let k_seed: [u8; 32] = h_output[96..128].try_into().unwrap();
+    let mut rho_prime: [u8; 64] = h_output[32..96].try_into().unwrap();
+    let mut k_seed: [u8; 32] = h_output[96..128].try_into().unwrap();
 
     // 3. A_hat = ExpandA(rho) -- already in NTT domain
     let a_hat_sampling = sampling::expand_a(&rho, params.k, params.l);
@@ -136,6 +136,13 @@ pub fn ml_dsa_keygen(
     sk.extend_from_slice(&s1.to_bytes_eta(params.eta));
     sk.extend_from_slice(&s2.to_bytes_eta(params.eta));
     sk.extend_from_slice(&t0_vec.to_bytes_t0());
+
+    // Zeroize sensitive intermediate buffers before returning
+    xi.zeroize();
+    h_input.zeroize();
+    h_output.zeroize();
+    rho_prime.zeroize();
+    k_seed.zeroize();
 
     Ok(MlDsaKeyPair { pk, sk })
 }

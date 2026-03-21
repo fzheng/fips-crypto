@@ -21,6 +21,7 @@ use crate::ml_dsa::sampling;
 use crate::primitives::random::random_bytes;
 use crate::primitives::sha3::shake256;
 use wasm_bindgen::JsError;
+use zeroize::Zeroize;
 
 /// Convert a sampling::DsaPolyMat to a polynomial::DsaPolyMat
 fn convert_polymat(src: &sampling::DsaPolyMat) -> DsaPolyMat {
@@ -82,7 +83,7 @@ pub fn ml_dsa_sign(
 
     // Parse sk = rho || K || tr || s1 || s2 || t0
     let rho: [u8; 32] = sk[0..32].try_into().unwrap();
-    let k_bytes: [u8; 32] = sk[32..64].try_into().unwrap();
+    let mut k_bytes: [u8; 32] = sk[32..64].try_into().unwrap();
     let tr: [u8; 64] = sk[64..128].try_into().unwrap();
 
     // Calculate sizes for eta packing
@@ -133,7 +134,7 @@ pub fn ml_dsa_sign(
     rho_pp_input.extend_from_slice(&k_bytes);
     rho_pp_input.extend_from_slice(&rnd);
     rho_pp_input.extend_from_slice(&mu);
-    let rho_pp: [u8; 64] = shake256(&rho_pp_input, 64).try_into().unwrap();
+    let mut rho_pp: [u8; 64] = shake256(&rho_pp_input, 64).try_into().unwrap();
 
     let beta = params.beta();
     let mut kappa: u16 = 0;
@@ -248,6 +249,13 @@ pub fn ml_dsa_sign(
 
         // Encode hints: for each polynomial, list the positions of 1s
         encode_hints(&hint, params.k, params.omega, &mut sig);
+
+        // Zeroize sensitive intermediate buffers before returning
+        k_bytes.zeroize();
+        rnd.zeroize();
+        rho_pp_input.zeroize();
+        rho_pp.zeroize();
+        mu_input.zeroize();
 
         return Ok(sig);
     }

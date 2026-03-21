@@ -59,3 +59,25 @@ npm run verify:integrity
 ```
 
 See [README.md](README.md#supply-chain-integrity) for details.
+
+## Verifying Package Provenance
+
+fips-crypto is published with [npm provenance](https://docs.npmjs.com/generating-provenance-statements), linking each release to a specific GitHub Actions workflow run via Sigstore attestation.
+
+### Verify with npm CLI (v9.5.0+)
+
+```bash
+npm audit signatures
+```
+
+A successful result confirms the package was built and published by the GitHub Actions workflow in the `fzheng/fips-crypto` repository, not by a compromised token or third party.
+
+### What each verification layer protects against
+
+| Threat | Checksums | Provenance |
+|--------|-----------|------------|
+| CDN/mirror corruption | Yes | No |
+| Stolen npm token | No | Yes |
+| Compromised CI environment | No | No |
+
+For a detailed security model, see [docs/SECURITY-MODEL.md](docs/SECURITY-MODEL.md#checksums-vs-provenance-threat-boundaries).

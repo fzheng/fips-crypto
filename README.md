@@ -68,6 +68,15 @@ import { ml_kem768 } from 'fips-crypto/ml-kem';
 import { ml_dsa65 } from 'fips-crypto/ml-dsa';
 ```
 
+### Runtime Compatibility
+
+| Runtime | Status | Notes |
+|---------|--------|-------|
+| Node.js 18+ | Supported | Full CI coverage (Ubuntu, macOS, Windows) |
+| Browsers | Supported | Via bundler (Vite, webpack, etc.) with WASM plugin |
+| Bun | Untested | WASM support available; community reports welcome |
+| Deno | Untested | WASM support available; community reports welcome |
+
 ### From Source
 
 See [Building from Source](#building-from-source) below.
@@ -76,38 +85,37 @@ See [Building from Source](#building-from-source) below.
 
 ## Quick Start
 
+### Recommended: Auto-Init
+
+```typescript
+import { ml_kem768, ml_dsa65 } from 'fips-crypto/auto';
+
+// No init() needed — WASM loads lazily on first use
+
+// Key encapsulation
+const { publicKey, secretKey } = await ml_kem768.keygen();
+const { ciphertext, sharedSecret } = await ml_kem768.encapsulate(publicKey);
+const bobSecret = await ml_kem768.decapsulate(secretKey, ciphertext);
+
+// Digital signatures
+const { publicKey: pk, secretKey: sk } = await ml_dsa65.keygen();
+const message = new TextEncoder().encode('Hello, post-quantum world!');
+const signature = await ml_dsa65.sign(sk, message);
+const valid = await ml_dsa65.verify(pk, message, signature); // true
+```
+
+### Manual Init (for precise control)
+
 ```typescript
 import { init, ml_kem768 } from 'fips-crypto';
 
-// Initialize the WASM module (required once before using any functions)
+// Initialize WASM once at application startup
 await init();
 
-// Generate a key pair
 const { publicKey, secretKey } = await ml_kem768.keygen();
-
-// Alice encapsulates a shared secret for Bob using his public key
 const { ciphertext, sharedSecret } = await ml_kem768.encapsulate(publicKey);
-
-// Bob decapsulates to get the same shared secret
 const bobSecret = await ml_kem768.decapsulate(secretKey, ciphertext);
-
-// Both parties now have the same 32-byte shared secret
-// Use it for symmetric encryption (e.g., AES-256-GCM)
 console.log('Secrets match:', Buffer.from(sharedSecret).equals(Buffer.from(bobSecret)));
-
-// --- ML-DSA: Digital Signatures ---
-import { ml_dsa65 } from 'fips-crypto';
-
-// Generate signing key pair
-const { publicKey: pk, secretKey: sk } = await ml_dsa65.keygen();
-
-// Sign a message
-const message = new TextEncoder().encode('Hello, post-quantum world!');
-const signature = await ml_dsa65.sign(sk, message);
-
-// Verify the signature
-const valid = await ml_dsa65.verify(pk, message, signature);
-console.log('Signature valid:', valid); // true
 ```
 
 ---
