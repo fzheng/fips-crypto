@@ -32,9 +32,10 @@
     "dist"
   ],
   "scripts": {
-    "build:wasm": "wasm-pack build rust --target bundler --release --out-dir ../pkg && wasm-pack build rust --target nodejs --release --out-dir ../pkg-node && node scripts/patch-wasm.cjs",
+    "build:wasm": "wasm-pack build rust --target bundler --release --out-dir ../pkg && wasm-pack build rust --target nodejs --release --out-dir ../pkg-node && node scripts/patch-wasm.cjs && node scripts/generate-checksums.cjs",
     "build:ts": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && shx cp -r pkg dist/pkg && shx rm -f dist/pkg/.gitignore",
     "build": "npm run build:wasm && npm run build:ts",
+    "verify:integrity": "node scripts/verify-integrity.cjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

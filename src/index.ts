@@ -204,3 +204,4 @@ export async function init(): Promise<void> {
  * ```
  */
 export const VERSION = '0.5.0';
+
