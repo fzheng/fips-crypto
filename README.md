@@ -17,7 +17,7 @@ Built with Rust and WebAssembly for high performance in both Node.js and browser
   - ML-KEM-768 (Security Category 3, ~AES-192) - **Recommended**
   - ML-KEM-1024 (Security Category 5, ~AES-256)
 
-- **ML-DSA (FIPS 204)** - Module-Lattice-Based Digital Signature Algorithm *(Coming Soon)*
+- **ML-DSA (FIPS 204)** - Module-Lattice-Based Digital Signature Algorithm
   - ML-DSA-44 (Security Category 2)
   - ML-DSA-65 (Security Category 3) - **Recommended**
   - ML-DSA-87 (Security Category 5)
@@ -75,130 +75,107 @@ const bobSecret = await ml_kem768.decapsulate(secretKey, ciphertext);
 // Both parties now have the same 32-byte shared secret
 // Use it for symmetric encryption (e.g., AES-256-GCM)
 console.log('Secrets match:', Buffer.from(sharedSecret).equals(Buffer.from(bobSecret)));
+
+// --- ML-DSA: Digital Signatures ---
+import { ml_dsa65 } from 'fips-crypto';
+
+// Generate signing key pair
+const { publicKey: pk, secretKey: sk } = await ml_dsa65.keygen();
+
+// Sign a message
+const message = new TextEncoder().encode('Hello, post-quantum world!');
+const signature = await ml_dsa65.sign(sk, message);
+
+// Verify the signature
+const valid = await ml_dsa65.verify(pk, message, signature);
+console.log('Signature valid:', valid); // true
 ```
 
 ---
 
 ## Usage Examples
 
-### Node.js (ES Modules)
+### Key Encapsulation (ML-KEM)
 
 ```typescript
-import { init, ml_kem768, ml_kem512, ml_kem1024 } from 'fips-crypto';
+import { init, ml_kem768 } from 'fips-crypto';
 
-async function main() {
-  // Initialize WASM module
-  await init();
+await init();
 
-  // ML-KEM-768 is recommended for most use cases
-  const { publicKey, secretKey } = await ml_kem768.keygen();
+// Alice generates a key pair
+const { publicKey, secretKey } = await ml_kem768.keygen();
 
-  console.log('Public Key:', publicKey.length, 'bytes');
-  console.log('Secret Key:', secretKey.length, 'bytes');
+// Bob encapsulates a shared secret using Alice's public key
+const { ciphertext, sharedSecret } = await ml_kem768.encapsulate(publicKey);
 
-  // Encapsulate
-  const { ciphertext, sharedSecret } = await ml_kem768.encapsulate(publicKey);
-  console.log('Ciphertext:', ciphertext.length, 'bytes');
-  console.log('Shared Secret:', Buffer.from(sharedSecret).toString('hex'));
+// Alice decapsulates to get the same shared secret
+const recovered = await ml_kem768.decapsulate(secretKey, ciphertext);
 
-  // Decapsulate
-  const recovered = await ml_kem768.decapsulate(secretKey, ciphertext);
-  console.log('Recovered Secret:', Buffer.from(recovered).toString('hex'));
-}
-
-main().catch(console.error);
+// Both parties now share a 32-byte secret for symmetric encryption
+console.log('Match:', Buffer.from(sharedSecret).equals(Buffer.from(recovered)));
 ```
 
-### Node.js (CommonJS)
+### Digital Signatures (ML-DSA)
+
+```typescript
+import { init, ml_dsa65 } from 'fips-crypto';
+
+await init();
+
+// Generate a signing key pair
+const { publicKey, secretKey } = await ml_dsa65.keygen();
+
+// Sign a message
+const message = new TextEncoder().encode('Transfer $100 to Alice');
+const signature = await ml_dsa65.sign(secretKey, message);
+
+// Verify the signature
+const valid = await ml_dsa65.verify(publicKey, message, signature);
+console.log('Valid:', valid); // true
+
+// Signing with context (optional, must match during verification)
+const context = new TextEncoder().encode('payment-v1');
+const sig2 = await ml_dsa65.sign(secretKey, message, context);
+await ml_dsa65.verify(publicKey, message, sig2, context); // true
+await ml_dsa65.verify(publicKey, message, sig2);           // false (context mismatch)
+```
+
+### CommonJS
 
 ```javascript
-const { init, ml_kem768 } = require('fips-crypto');
+const { init, ml_kem768, ml_dsa65 } = require('fips-crypto');
 
 async function main() {
   await init();
 
+  // Key encapsulation
   const { publicKey, secretKey } = await ml_kem768.keygen();
   const { ciphertext, sharedSecret } = await ml_kem768.encapsulate(publicKey);
   const recovered = await ml_kem768.decapsulate(secretKey, ciphertext);
 
-  console.log('Success:', Buffer.compare(sharedSecret, recovered) === 0);
+  // Digital signature
+  const { publicKey: pk, secretKey: sk } = await ml_dsa65.keygen();
+  const msg = Buffer.from('Hello');
+  const sig = await ml_dsa65.sign(sk, msg);
+  console.log('Signature valid:', await ml_dsa65.verify(pk, msg, sig));
 }
 
 main();
 ```
 
-### Browser (with bundler like Vite, Webpack, etc.)
-
-```typescript
-import { init, ml_kem768 } from 'fips-crypto';
-
-async function setupQuantumSafeChannel() {
-  // Initialize WASM (loads the .wasm file)
-  await init();
-
-  // Generate key pair
-  const { publicKey, secretKey } = await ml_kem768.keygen();
-
-  // Send publicKey to the other party...
-
-  return { publicKey, secretKey };
-}
-
-async function encapsulateSecret(recipientPublicKey: Uint8Array) {
-  const { ciphertext, sharedSecret } = await ml_kem768.encapsulate(recipientPublicKey);
-
-  // Send ciphertext to recipient
-  // Use sharedSecret for AES-GCM encryption
-
-  return { ciphertext, sharedSecret };
-}
-```
-
-### Deterministic Key Generation (for testing)
-
-```typescript
-import { init, ml_kem768 } from 'fips-crypto';
-
-await init();
-
-// Use a 64-byte seed for deterministic key generation
-const seed = new Uint8Array(64);
-seed.fill(0x42);
-
-const keypair1 = await ml_kem768.keygen(seed);
-const keypair2 = await ml_kem768.keygen(seed);
-
-// Both keypairs are identical
-console.log('Same keys:',
-  Buffer.from(keypair1.publicKey).equals(Buffer.from(keypair2.publicKey))
-);
-```
-
 ### Error Handling
 
 ```typescript
-import { init, ml_kem768, FipsCryptoError, ErrorCodes } from 'fips-crypto';
+import { init, ml_kem768, ml_dsa65, FipsCryptoError } from 'fips-crypto';
 
 await init();
 
 try {
-  // This will fail - wrong key length
-  const invalidKey = new Uint8Array(100);
-  await ml_kem768.encapsulate(invalidKey);
+  await ml_kem768.encapsulate(new Uint8Array(100)); // wrong key length
 } catch (error) {
   if (error instanceof FipsCryptoError) {
-    console.log('Error code:', error.code); // 'INVALID_KEY_LENGTH'
-    console.log('Message:', error.message);
-  }
-}
-
-try {
-  // This will fail - seed must be exactly 64 bytes for keygen
-  const badSeed = new Uint8Array(32);
-  await ml_kem768.keygen(badSeed);
-} catch (error) {
-  if (error instanceof FipsCryptoError) {
-    console.log('Error code:', error.code); // 'INVALID_SEED_LENGTH'
+    console.log(error.code);    // 'INVALID_KEY_LENGTH'
+    console.log(error.message); // 'Invalid public key length: expected 1184, got 100'
   }
 }
 ```
@@ -268,6 +245,56 @@ Parameter set information:
   secretKeyBytes: 2400,
   ciphertextBytes: 1088,
   sharedSecretBytes: 32
+}
+```
+
+### ML-DSA (Digital Signatures)
+
+#### `ml_dsa44 | ml_dsa65 | ml_dsa87`
+
+Each ML-DSA variant provides the following methods:
+
+##### `keygen(seed?: Uint8Array): Promise<MlDsaKeyPair>`
+
+Generate a signing key pair.
+
+- `seed` (optional): 32-byte seed for deterministic generation
+- Returns: `{ publicKey: Uint8Array, secretKey: Uint8Array }`
+- Throws: `INVALID_SEED_LENGTH` if seed is provided but not exactly 32 bytes
+
+##### `sign(secretKey: Uint8Array, message: Uint8Array, context?: Uint8Array): Promise<Uint8Array>`
+
+Sign a message.
+
+- `secretKey`: Your signing key
+- `message`: Message to sign (arbitrary length)
+- `context` (optional): Context string (max 255 bytes, must match during verification)
+- Returns: Signature bytes
+- Throws: `INVALID_KEY_LENGTH` if secret key has wrong length
+
+##### `verify(publicKey: Uint8Array, message: Uint8Array, signature: Uint8Array, context?: Uint8Array): Promise<boolean>`
+
+Verify a signature.
+
+- `publicKey`: Signer's verification key
+- `message`: Original message
+- `signature`: Signature to verify
+- `context` (optional): Context string (must match the context used during signing)
+- Returns: `true` if signature is valid, `false` otherwise
+- Throws: `INVALID_KEY_LENGTH` if public key has wrong length
+- Throws: `INVALID_SIGNATURE_LENGTH` if signature has wrong length
+
+##### `params: MlDsaParams`
+
+Parameter set information:
+
+```typescript
+{
+  name: 'ML-DSA-65',
+  securityCategory: 3,
+  publicKeyBytes: 1952,
+  secretKeyBytes: 4032,
+  signatureBytes: 3309
 }
 ```
 
@@ -404,7 +431,7 @@ Coverage thresholds: 99% statements, 99% functions, 98% branches, 99% lines.
 | Parameter Set | Security | Public Key | Secret Key | Signature |
 |---------------|----------|------------|------------|-----------|
 | ML-DSA-44     | Cat. 2   | 1,312 B    | 2,560 B    | 2,420 B   |
-| ML-DSA-65     | Cat. 3   | 1,952 B    | 4,032 B    | 3,293 B   |
+| ML-DSA-65     | Cat. 3   | 1,952 B    | 4,032 B    | 3,309 B   |
 | ML-DSA-87     | Cat. 5   | 2,592 B    | 4,896 B    | 4,627 B   |
 
 ### SLH-DSA (FIPS 205)
@@ -462,7 +489,9 @@ This library implements algorithms standardized by NIST:
 
 ML-KEM compliance is verified through Known Answer Tests (KAT): pre-generated key pairs, ciphertexts, and shared secrets produced by an independent FIPS 203 implementation are included as static test vectors. Our library must successfully decapsulate each ciphertext and recover the identical shared secret. This covers all three parameter sets (ML-KEM-512, ML-KEM-768, ML-KEM-1024).
 
-The Rust implementation includes detailed references to specific FIPS 203 algorithm numbers (Algorithms 7-18) in source code comments.
+ML-DSA compliance is verified through sign/verify roundtrip tests, input validation, corrupted signature rejection, context mismatch detection, and cross-key verification failure for all three parameter sets (ML-DSA-44, ML-DSA-65, ML-DSA-87). The Rust implementation includes 153 unit tests covering NTT, polynomial arithmetic, sampling, key generation, signing, and verification.
+
+The Rust implementation includes detailed references to specific FIPS algorithm numbers in source code comments.
 
 ### Migration Timeline
 

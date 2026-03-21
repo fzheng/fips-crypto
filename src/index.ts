@@ -11,7 +11,7 @@
  * - `ml_kem768` - Security Category 3 (~AES-192) **Recommended**
  * - `ml_kem1024` - Security Category 5 (~AES-256)
  *
- * ### FIPS 204: ML-DSA (Digital Signatures) - Coming Soon
+ * ### FIPS 204: ML-DSA (Digital Signatures)
  * - `ml_dsa44` - Security Category 2
  * - `ml_dsa65` - Security Category 3 **Recommended**
  * - `ml_dsa87` - Security Category 5
@@ -78,9 +78,12 @@ export { ml_kem512, ml_kem768, ml_kem1024, initMlKem } from './ml-kem.js';
 /**
  * ML-DSA algorithms for digital signatures.
  *
- * @remarks These algorithms are not yet implemented.
+ * - `ml_dsa44` - Smallest keys/signatures, Category 2 security
+ * - `ml_dsa65` - Balanced choice, Category 3 security (recommended)
+ * - `ml_dsa87` - Highest security, Category 5
+ * - `initMlDsa()` - Initialize WASM module
  */
-export { ml_dsa44, ml_dsa65, ml_dsa87 } from './ml-dsa.js';
+export { ml_dsa44, ml_dsa65, ml_dsa87, initMlDsa } from './ml-dsa.js';
 
 // =============================================================================
 // SLH-DSA Exports (FIPS 205)
@@ -180,8 +183,9 @@ export { FipsCryptoError, ErrorCodes } from './types.js';
  */
 export async function init(): Promise<void> {
   const { initMlKem } = await import('./ml-kem.js');
-  await initMlKem();
-  // When ML-DSA and SLH-DSA are implemented, initialize them here too
+  const { initMlDsa } = await import('./ml-dsa.js');
+  await Promise.all([initMlKem(), initMlDsa()]);
+  // When SLH-DSA is implemented, initialize it here too
 }
 
 // =============================================================================
