@@ -22,6 +22,57 @@
 import type { MlDsaAlgorithm, MlDsaKeyPair, MlDsaParams } from './types.js';
 import { FipsCryptoError, ErrorCodes } from './types.js';
 
+// WASM module will be loaded dynamically
+let wasm: typeof import('../pkg/fips_crypto_wasm.js') | null = null;
+let wasmInitPromise: Promise<void> | null = null;
+
+/**
+ * Initialize the ML-DSA WASM module
+ */
+export async function initMlDsa(): Promise<void> {
+  if (wasm) return;
+  if (wasmInitPromise) return wasmInitPromise;
+
+  wasmInitPromise = (async () => {
+    try {
+      wasm = await import('../pkg/fips_crypto_wasm.js');
+    } catch {
+      wasmInitPromise = null;
+      throw new FipsCryptoError(
+        'Failed to load WASM module. Ensure the package is built.',
+        ErrorCodes.WASM_NOT_INITIALIZED
+      );
+    }
+  })();
+
+  return wasmInitPromise;
+}
+
+/**
+ * Ensure WASM is initialized
+ */
+function ensureWasm(): typeof import('../pkg/fips_crypto_wasm.js') {
+  if (!wasm) {
+    throw new FipsCryptoError(
+      'WASM module not initialized. Call init() first.',
+      ErrorCodes.WASM_NOT_INITIALIZED
+    );
+  }
+  return wasm;
+}
+
+/**
+ * Validate context length per FIPS 204 (max 255 bytes)
+ */
+function validateContext(context?: Uint8Array): void {
+  if (context !== undefined && context.length > 255) {
+    throw new FipsCryptoError(
+      `Context must be at most 255 bytes, got ${context.length}`,
+      ErrorCodes.INVALID_CONTEXT_LENGTH
+    );
+  }
+}
+
 // ============================================================================
 // ML-DSA-44
 // ============================================================================
@@ -37,39 +88,71 @@ const ML_DSA_44_PARAMS: MlDsaParams = {
 /**
  * ML-DSA-44 (Security Category 2)
  *
- * @remarks This algorithm is not yet implemented.
+ * @example
+ * ```typescript
+ * const { publicKey, secretKey } = await ml_dsa44.keygen();
+ * const sig = await ml_dsa44.sign(secretKey, message);
+ * const valid = await ml_dsa44.verify(publicKey, message, sig);
+ * ```
  */
 export const ml_dsa44: MlDsaAlgorithm = {
   params: ML_DSA_44_PARAMS,
 
-  async keygen(_seed?: Uint8Array): Promise<MlDsaKeyPair> {
-    throw new FipsCryptoError(
-      'ML-DSA-44 is not yet implemented',
-      ErrorCodes.NOT_IMPLEMENTED
-    );
+  async keygen(seed?: Uint8Array): Promise<MlDsaKeyPair> {
+    if (seed !== undefined && seed.length !== 32) {
+      throw new FipsCryptoError(
+        `Invalid seed length for keygen: expected 32, got ${seed.length}`,
+        ErrorCodes.INVALID_SEED_LENGTH
+      );
+    }
+    const w = ensureWasm();
+    const result = w.mlDsa44KeyGen(seed) as {
+      publicKey: Uint8Array;
+      secretKey: Uint8Array;
+    };
+    return {
+      publicKey: new Uint8Array(result.publicKey),
+      secretKey: new Uint8Array(result.secretKey),
+    };
   },
 
   async sign(
-    _secretKey: Uint8Array,
-    _message: Uint8Array,
-    _context?: Uint8Array
+    secretKey: Uint8Array,
+    message: Uint8Array,
+    context?: Uint8Array
   ): Promise<Uint8Array> {
-    throw new FipsCryptoError(
-      'ML-DSA-44 is not yet implemented',
-      ErrorCodes.NOT_IMPLEMENTED
-    );
+    validateContext(context);
+    const w = ensureWasm();
+    if (secretKey.length !== ML_DSA_44_PARAMS.secretKeyBytes) {
+      throw new FipsCryptoError(
+        `Invalid secret key length: expected ${ML_DSA_44_PARAMS.secretKeyBytes}, got ${secretKey.length}`,
+        ErrorCodes.INVALID_KEY_LENGTH
+      );
+    }
+    return new Uint8Array(w.mlDsa44Sign(secretKey, message, context));
   },
 
   async verify(
-    _publicKey: Uint8Array,
-    _message: Uint8Array,
-    _signature: Uint8Array,
-    _context?: Uint8Array
+    publicKey: Uint8Array,
+    message: Uint8Array,
+    signature: Uint8Array,
+    context?: Uint8Array
   ): Promise<boolean> {
-    throw new FipsCryptoError(
-      'ML-DSA-44 is not yet implemented',
-      ErrorCodes.NOT_IMPLEMENTED
-    );
+    validateContext(context);
+    const w = ensureWasm();
+    if (publicKey.length !== ML_DSA_44_PARAMS.publicKeyBytes) {
+      throw new FipsCryptoError(
+        `Invalid public key length: expected ${ML_DSA_44_PARAMS.publicKeyBytes}, got ${publicKey.length}`,
+        ErrorCodes.INVALID_KEY_LENGTH
+      );
+    }
+    if (signature.length !== ML_DSA_44_PARAMS.signatureBytes) {
+      throw new FipsCryptoError(
+        `Invalid signature length: expected ${ML_DSA_44_PARAMS.signatureBytes}, got ${signature.length}`,
+        ErrorCodes.INVALID_SIGNATURE_LENGTH
+      );
+    }
+    return w.mlDsa44Verify(publicKey, message, signature, context);
   },
 };
 
@@ -82,47 +165,77 @@ const ML_DSA_65_PARAMS: MlDsaParams = {
   securityCategory: 3,
   publicKeyBytes: 1952,
   secretKeyBytes: 4032,
-  signatureBytes: 3293,
+  signatureBytes: 3309,
 };
 
 /**
- * ML-DSA-65 (Security Category 3)
+ * ML-DSA-65 (Security Category 3) - **Recommended**
  *
- * This is the recommended parameter set for general use.
- *
- * @remarks This algorithm is not yet implemented.
+ * @example
+ * ```typescript
+ * const { publicKey, secretKey } = await ml_dsa65.keygen();
+ * const sig = await ml_dsa65.sign(secretKey, message);
+ * const valid = await ml_dsa65.verify(publicKey, message, sig);
+ * ```
  */
 export const ml_dsa65: MlDsaAlgorithm = {
   params: ML_DSA_65_PARAMS,
 
-  async keygen(_seed?: Uint8Array): Promise<MlDsaKeyPair> {
-    throw new FipsCryptoError(
-      'ML-DSA-65 is not yet implemented',
-      ErrorCodes.NOT_IMPLEMENTED
-    );
+  async keygen(seed?: Uint8Array): Promise<MlDsaKeyPair> {
+    if (seed !== undefined && seed.length !== 32) {
+      throw new FipsCryptoError(
+        `Invalid seed length for keygen: expected 32, got ${seed.length}`,
+        ErrorCodes.INVALID_SEED_LENGTH
+      );
+    }
+    const w = ensureWasm();
+    const result = w.mlDsa65KeyGen(seed) as {
+      publicKey: Uint8Array;
+      secretKey: Uint8Array;
+    };
+    return {
+      publicKey: new Uint8Array(result.publicKey),
+      secretKey: new Uint8Array(result.secretKey),
+    };
   },
 
   async sign(
-    _secretKey: Uint8Array,
-    _message: Uint8Array,
-    _context?: Uint8Array
+    secretKey: Uint8Array,
+    message: Uint8Array,
+    context?: Uint8Array
   ): Promise<Uint8Array> {
-    throw new FipsCryptoError(
-      'ML-DSA-65 is not yet implemented',
-      ErrorCodes.NOT_IMPLEMENTED
-    );
+    validateContext(context);
+    const w = ensureWasm();
+    if (secretKey.length !== ML_DSA_65_PARAMS.secretKeyBytes) {
+      throw new FipsCryptoError(
+        `Invalid secret key length: expected ${ML_DSA_65_PARAMS.secretKeyBytes}, got ${secretKey.length}`,
+        ErrorCodes.INVALID_KEY_LENGTH
+      );
+    }
+    return new Uint8Array(w.mlDsa65Sign(secretKey, message, context));
   },
 
   async verify(
-    _publicKey: Uint8Array,
-    _message: Uint8Array,
-    _signature: Uint8Array,
-    _context?: Uint8Array
+    publicKey: Uint8Array,
+    message: Uint8Array,
+    signature: Uint8Array,
+    context?: Uint8Array
   ): Promise<boolean> {
-    throw new FipsCryptoError(
-      'ML-DSA-65 is not yet implemented',
-      ErrorCodes.NOT_IMPLEMENTED
-    );
+    validateContext(context);
+    const w = ensureWasm();
+    if (publicKey.length !== ML_DSA_65_PARAMS.publicKeyBytes) {
+      throw new FipsCryptoError(
+        `Invalid public key length: expected ${ML_DSA_65_PARAMS.publicKeyBytes}, got ${publicKey.length}`,
+        ErrorCodes.INVALID_KEY_LENGTH
+      );
+    }
+    if (signature.length !== ML_DSA_65_PARAMS.signatureBytes) {
+      throw new FipsCryptoError(
+        `Invalid signature length: expected ${ML_DSA_65_PARAMS.signatureBytes}, got ${signature.length}`,
+        ErrorCodes.INVALID_SIGNATURE_LENGTH
+      );
+    }
+    return w.mlDsa65Verify(publicKey, message, signature, context);
   },
 };
 
@@ -141,38 +254,70 @@ const ML_DSA_87_PARAMS: MlDsaParams = {
 /**
  * ML-DSA-87 (Security Category 5)
  *
- * @remarks This algorithm is not yet implemented.
+ * @example
+ * ```typescript
+ * const { publicKey, secretKey } = await ml_dsa87.keygen();
+ * const sig = await ml_dsa87.sign(secretKey, message);
+ * const valid = await ml_dsa87.verify(publicKey, message, sig);
+ * ```
  */
 export const ml_dsa87: MlDsaAlgorithm = {
   params: ML_DSA_87_PARAMS,
 
-  async keygen(_seed?: Uint8Array): Promise<MlDsaKeyPair> {
-    throw new FipsCryptoError(
-      'ML-DSA-87 is not yet implemented',
-      ErrorCodes.NOT_IMPLEMENTED
-    );
+  async keygen(seed?: Uint8Array): Promise<MlDsaKeyPair> {
+    if (seed !== undefined && seed.length !== 32) {
+      throw new FipsCryptoError(
+        `Invalid seed length for keygen: expected 32, got ${seed.length}`,
+        ErrorCodes.INVALID_SEED_LENGTH
+      );
+    }
+    const w = ensureWasm();
+    const result = w.mlDsa87KeyGen(seed) as {
+      publicKey: Uint8Array;
+      secretKey: Uint8Array;
+    };
+    return {
+      publicKey: new Uint8Array(result.publicKey),
+      secretKey: new Uint8Array(result.secretKey),
+    };
   },
 
   async sign(
-    _secretKey: Uint8Array,
-    _message: Uint8Array,
-    _context?: Uint8Array
+    secretKey: Uint8Array,
+    message: Uint8Array,
+    context?: Uint8Array
   ): Promise<Uint8Array> {
-    throw new FipsCryptoError(
-      'ML-DSA-87 is not yet implemented',
-      ErrorCodes.NOT_IMPLEMENTED
-    );
+    validateContext(context);
+    const w = ensureWasm();
+    if (secretKey.length !== ML_DSA_87_PARAMS.secretKeyBytes) {
+      throw new FipsCryptoError(
+        `Invalid secret key length: expected ${ML_DSA_87_PARAMS.secretKeyBytes}, got ${secretKey.length}`,
+        ErrorCodes.INVALID_KEY_LENGTH
+      );
+    }
+    return new Uint8Array(w.mlDsa87Sign(secretKey, message, context));
   },
 
   async verify(
-    _publicKey: Uint8Array,
-    _message: Uint8Array,
-    _signature: Uint8Array,
-    _context?: Uint8Array
+    publicKey: Uint8Array,
+    message: Uint8Array,
+    signature: Uint8Array,
+    context?: Uint8Array
   ): Promise<boolean> {
-    throw new FipsCryptoError(
-      'ML-DSA-87 is not yet implemented',
-      ErrorCodes.NOT_IMPLEMENTED
-    );
+    validateContext(context);
+    const w = ensureWasm();
+    if (publicKey.length !== ML_DSA_87_PARAMS.publicKeyBytes) {
+      throw new FipsCryptoError(
+        `Invalid public key length: expected ${ML_DSA_87_PARAMS.publicKeyBytes}, got ${publicKey.length}`,
+        ErrorCodes.INVALID_KEY_LENGTH
+      );
+    }
+    if (signature.length !== ML_DSA_87_PARAMS.signatureBytes) {
+      throw new FipsCryptoError(
+        `Invalid signature length: expected ${ML_DSA_87_PARAMS.signatureBytes}, got ${signature.length}`,
+        ErrorCodes.INVALID_SIGNATURE_LENGTH
+      );
+    }
+    return w.mlDsa87Verify(publicKey, message, signature, context);
   },
 };

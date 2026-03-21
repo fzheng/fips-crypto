@@ -182,9 +182,9 @@ describe('ErrorCodes', () => {
       expect(codes.length).toBe(uniqueCodes.size);
     });
 
-    it('has exactly 8 error codes', () => {
+    it('has exactly 9 error codes', () => {
       const codes = Object.keys(ErrorCodes);
-      expect(codes.length).toBe(8);
+      expect(codes.length).toBe(9);
     });
   });
 

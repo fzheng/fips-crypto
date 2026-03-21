@@ -81,6 +81,13 @@ const ML_KEM_512_PARAMS: MlKemParams = {
 
 /**
  * ML-KEM-512 (Security Category 1, ~AES-128 equivalent)
+ *
+ * @example
+ * ```typescript
+ * const { publicKey, secretKey } = await ml_kem512.keygen();
+ * const { ciphertext, sharedSecret } = await ml_kem512.encapsulate(publicKey);
+ * const recovered = await ml_kem512.decapsulate(secretKey, ciphertext);
+ * ```
  */
 export const ml_kem512: MlKemAlgorithm = {
   params: ML_KEM_512_PARAMS,
@@ -165,9 +172,14 @@ const ML_KEM_768_PARAMS: MlKemParams = {
 };
 
 /**
- * ML-KEM-768 (Security Category 3, ~AES-192 equivalent)
+ * ML-KEM-768 (Security Category 3, ~AES-192 equivalent) - **Recommended**
  *
- * This is the recommended parameter set for general use.
+ * @example
+ * ```typescript
+ * const { publicKey, secretKey } = await ml_kem768.keygen();
+ * const { ciphertext, sharedSecret } = await ml_kem768.encapsulate(publicKey);
+ * const recovered = await ml_kem768.decapsulate(secretKey, ciphertext);
+ * ```
  */
 export const ml_kem768: MlKemAlgorithm = {
   params: ML_KEM_768_PARAMS,
@@ -253,6 +265,13 @@ const ML_KEM_1024_PARAMS: MlKemParams = {
 
 /**
  * ML-KEM-1024 (Security Category 5, ~AES-256 equivalent)
+ *
+ * @example
+ * ```typescript
+ * const { publicKey, secretKey } = await ml_kem1024.keygen();
+ * const { ciphertext, sharedSecret } = await ml_kem1024.encapsulate(publicKey);
+ * const recovered = await ml_kem1024.decapsulate(secretKey, ciphertext);
+ * ```
  */
 export const ml_kem1024: MlKemAlgorithm = {
   params: ML_KEM_1024_PARAMS,

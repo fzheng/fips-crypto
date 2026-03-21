@@ -18,6 +18,7 @@ import {
   ml_dsa44,
   ml_dsa65,
   ml_dsa87,
+  initMlDsa,
   // SLH-DSA SHA2 exports
   slh_dsa_sha2_128s,
   slh_dsa_sha2_128f,
@@ -53,8 +54,8 @@ describe('fips-crypto module', () => {
       expect(VERSION).toMatch(/^\d+\.\d+\.\d+$/);
     });
 
-    it('VERSION is 0.4.0', () => {
-      expect(VERSION).toBe('0.4.0');
+    it('VERSION is 0.5.0', () => {
+      expect(VERSION).toBe('0.5.0');
     });
   });
 
@@ -233,6 +234,7 @@ describe('fips-crypto module', () => {
       expect(fipsCrypto.ml_dsa44).toBeDefined();
       expect(fipsCrypto.ml_dsa65).toBeDefined();
       expect(fipsCrypto.ml_dsa87).toBeDefined();
+      expect(fipsCrypto.initMlDsa).toBeDefined();
 
       // SLH-DSA SHA2
       expect(fipsCrypto.slh_dsa_sha2_128s).toBeDefined();
@@ -257,11 +259,11 @@ describe('fips-crypto module', () => {
 
     it('has correct number of exports', () => {
       const exports = Object.keys(fipsCrypto);
-      // Expected: init, VERSION, initMlKem,
+      // Expected: init, VERSION, initMlKem, initMlDsa,
       // 3 ML-KEM, 3 ML-DSA, 12 SLH-DSA,
       // FipsCryptoError, ErrorCodes
-      // Total: 1 + 1 + 1 + 3 + 3 + 12 + 2 = 23
-      expect(exports.length).toBe(23);
+      // Total: 1 + 1 + 1 + 1 + 3 + 3 + 12 + 2 = 24
+      expect(exports.length).toBe(24);
     });
   });
 

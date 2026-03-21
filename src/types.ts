@@ -412,6 +412,8 @@ export const ErrorCodes = {
   DECAPSULATION_FAILED: 'DECAPSULATION_FAILED',
   /** Signature verification failed */
   VERIFICATION_FAILED: 'VERIFICATION_FAILED',
+  /** Context string exceeds maximum length (255 bytes) */
+  INVALID_CONTEXT_LENGTH: 'INVALID_CONTEXT_LENGTH',
   /** Algorithm not yet implemented */
   NOT_IMPLEMENTED: 'NOT_IMPLEMENTED',
 } as const;
