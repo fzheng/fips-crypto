@@ -62,4 +62,38 @@ describe('ML-KEM input validation (no init dependency)', () => {
     const invalidCt = new Uint8Array(100);
     await expect(ml_kem1024.decapsulate(fakeSk, invalidCt)).rejects.toThrow();
   });
+
+  // Seed validation tests (no WASM needed - validated before WASM call)
+  it('ml_kem512.keygen rejects invalid seed length', async () => {
+    const badSeed = new Uint8Array(32);
+    await expect(ml_kem512.keygen(badSeed)).rejects.toThrow('Invalid seed length for keygen');
+  });
+
+  it('ml_kem768.keygen rejects invalid seed length', async () => {
+    const badSeed = new Uint8Array(32);
+    await expect(ml_kem768.keygen(badSeed)).rejects.toThrow('Invalid seed length for keygen');
+  });
+
+  it('ml_kem1024.keygen rejects invalid seed length', async () => {
+    const badSeed = new Uint8Array(32);
+    await expect(ml_kem1024.keygen(badSeed)).rejects.toThrow('Invalid seed length for keygen');
+  });
+
+  it('ml_kem512.encapsulate rejects invalid seed length', async () => {
+    const publicKey = new Uint8Array(800);
+    const badSeed = new Uint8Array(16);
+    await expect(ml_kem512.encapsulate(publicKey, badSeed)).rejects.toThrow('Invalid seed length for encapsulation');
+  });
+
+  it('ml_kem768.encapsulate rejects invalid seed length', async () => {
+    const publicKey = new Uint8Array(1184);
+    const badSeed = new Uint8Array(16);
+    await expect(ml_kem768.encapsulate(publicKey, badSeed)).rejects.toThrow('Invalid seed length for encapsulation');
+  });
+
+  it('ml_kem1024.encapsulate rejects invalid seed length', async () => {
+    const publicKey = new Uint8Array(1568);
+    const badSeed = new Uint8Array(16);
+    await expect(ml_kem1024.encapsulate(publicKey, badSeed)).rejects.toThrow('Invalid seed length for encapsulation');
+  });
 });

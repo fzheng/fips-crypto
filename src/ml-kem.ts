@@ -29,21 +29,28 @@ import { FipsCryptoError, ErrorCodes } from './types.js';
 
 // WASM module will be loaded dynamically
 let wasm: typeof import('../pkg/fips_crypto_wasm.js') | null = null;
+let wasmInitPromise: Promise<void> | null = null;
 
 /**
  * Initialize the WASM module
  */
 export async function initMlKem(): Promise<void> {
   if (wasm) return;
+  if (wasmInitPromise) return wasmInitPromise;
 
-  try {
-    wasm = await import('../pkg/fips_crypto_wasm.js');
-  } catch {
-    throw new FipsCryptoError(
-      'Failed to load WASM module. Ensure the package is built.',
-      ErrorCodes.WASM_NOT_INITIALIZED
-    );
-  }
+  wasmInitPromise = (async () => {
+    try {
+      wasm = await import('../pkg/fips_crypto_wasm.js');
+    } catch {
+      wasmInitPromise = null;
+      throw new FipsCryptoError(
+        'Failed to load WASM module. Ensure the package is built.',
+        ErrorCodes.WASM_NOT_INITIALIZED
+      );
+    }
+  })();
+
+  return wasmInitPromise;
 }
 
 /**
@@ -79,6 +86,12 @@ export const ml_kem512: MlKemAlgorithm = {
   params: ML_KEM_512_PARAMS,
 
   async keygen(seed?: Uint8Array): Promise<MlKemKeyPair> {
+    if (seed !== undefined && seed.length !== 64) {
+      throw new FipsCryptoError(
+        `Invalid seed length for keygen: expected 64, got ${seed.length}`,
+        ErrorCodes.INVALID_SEED_LENGTH
+      );
+    }
     const w = ensureWasm();
     const result = w.mlKem512KeyGen(seed) as {
       publicKey: Uint8Array;
@@ -94,6 +107,12 @@ export const ml_kem512: MlKemAlgorithm = {
     publicKey: Uint8Array,
     seed?: Uint8Array
   ): Promise<MlKemEncapsulation> {
+    if (seed !== undefined && seed.length !== 32) {
+      throw new FipsCryptoError(
+        `Invalid seed length for encapsulation: expected 32, got ${seed.length}`,
+        ErrorCodes.INVALID_SEED_LENGTH
+      );
+    }
     const w = ensureWasm();
     if (publicKey.length !== ML_KEM_512_PARAMS.publicKeyBytes) {
       throw new FipsCryptoError(
@@ -154,6 +173,12 @@ export const ml_kem768: MlKemAlgorithm = {
   params: ML_KEM_768_PARAMS,
 
   async keygen(seed?: Uint8Array): Promise<MlKemKeyPair> {
+    if (seed !== undefined && seed.length !== 64) {
+      throw new FipsCryptoError(
+        `Invalid seed length for keygen: expected 64, got ${seed.length}`,
+        ErrorCodes.INVALID_SEED_LENGTH
+      );
+    }
     const w = ensureWasm();
     const result = w.mlKem768KeyGen(seed) as {
       publicKey: Uint8Array;
@@ -169,6 +194,12 @@ export const ml_kem768: MlKemAlgorithm = {
     publicKey: Uint8Array,
     seed?: Uint8Array
   ): Promise<MlKemEncapsulation> {
+    if (seed !== undefined && seed.length !== 32) {
+      throw new FipsCryptoError(
+        `Invalid seed length for encapsulation: expected 32, got ${seed.length}`,
+        ErrorCodes.INVALID_SEED_LENGTH
+      );
+    }
     const w = ensureWasm();
     if (publicKey.length !== ML_KEM_768_PARAMS.publicKeyBytes) {
       throw new FipsCryptoError(
@@ -227,6 +258,12 @@ export const ml_kem1024: MlKemAlgorithm = {
   params: ML_KEM_1024_PARAMS,
 
   async keygen(seed?: Uint8Array): Promise<MlKemKeyPair> {
+    if (seed !== undefined && seed.length !== 64) {
+      throw new FipsCryptoError(
+        `Invalid seed length for keygen: expected 64, got ${seed.length}`,
+        ErrorCodes.INVALID_SEED_LENGTH
+      );
+    }
     const w = ensureWasm();
     const result = w.mlKem1024KeyGen(seed) as {
       publicKey: Uint8Array;
@@ -242,6 +279,12 @@ export const ml_kem1024: MlKemAlgorithm = {
     publicKey: Uint8Array,
     seed?: Uint8Array
   ): Promise<MlKemEncapsulation> {
+    if (seed !== undefined && seed.length !== 32) {
+      throw new FipsCryptoError(
+        `Invalid seed length for encapsulation: expected 32, got ${seed.length}`,
+        ErrorCodes.INVALID_SEED_LENGTH
+      );
+    }
     const w = ensureWasm();
     if (publicKey.length !== ML_KEM_1024_PARAMS.publicKeyBytes) {
       throw new FipsCryptoError(
