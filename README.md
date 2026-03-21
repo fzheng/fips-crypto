@@ -5,10 +5,20 @@
 [![license](https://img.shields.io/npm/l/fips-crypto.svg?color=blue)](https://github.com/fzheng/fips-crypto/blob/main/LICENSE)
 [![codecov](https://codecov.io/gh/fzheng/fips-crypto/graph/badge.svg?token=X6HH8RWTDZ)](https://codecov.io/gh/fzheng/fips-crypto)
 [![FIPS 203](https://img.shields.io/badge/FIPS%20203-ML--KEM-blue)](https://csrc.nist.gov/pubs/fips/203/final)
+[![FIPS 204](https://img.shields.io/badge/FIPS%20204-ML--DSA-blue)](https://csrc.nist.gov/pubs/fips/204/final)
 
-A post-quantum cryptography library for JavaScript/TypeScript implementing NIST FIPS standards.
+Post-quantum cryptography for Node.js and browsers, implementing FIPS 203 (ML-KEM) and FIPS 204 (ML-DSA). Built in Rust, compiled to WebAssembly for high performance with constant-time operations, memory zeroization, and supply chain integrity verification.
 
-Built with Rust and WebAssembly for high performance in both Node.js and browser environments.
+### Why fips-crypto?
+
+| Feature | fips-crypto | Pure-JS alternatives |
+|---------|------------|---------------------|
+| Implementation | Rust compiled to WASM | JavaScript |
+| Constant-time operations | Yes (Rust, no secret-dependent branching) | Typically no |
+| Memory zeroization | Yes (`zeroize` crate, automatic on drop) | Not reliable (GC) |
+| Supply chain verification | SHA-256 checksums + npm provenance | Varies |
+| FIPS 203 (ML-KEM) | All 3 parameter sets | Varies |
+| FIPS 204 (ML-DSA) | All 3 parameter sets | Varies |
 
 ## Features
 
@@ -47,6 +57,15 @@ Built with Rust and WebAssembly for high performance in both Node.js and browser
 
 ```bash
 npm install fips-crypto
+```
+
+### Subpackage Imports
+
+Import only what you need to minimize bundle size:
+
+```typescript
+import { ml_kem768 } from 'fips-crypto/ml-kem';
+import { ml_dsa65 } from 'fips-crypto/ml-dsa';
 ```
 
 ### From Source
@@ -90,6 +109,30 @@ const signature = await ml_dsa65.sign(sk, message);
 const valid = await ml_dsa65.verify(pk, message, signature);
 console.log('Signature valid:', valid); // true
 ```
+
+---
+
+## Performance
+
+Benchmarked with `npm run bench` (vitest bench, Node.js 22, Windows 11, AMD Ryzen 7 5800X).
+
+### ML-KEM (FIPS 203)
+
+| Operation | ML-KEM-512 | ML-KEM-768 | ML-KEM-1024 |
+|-----------|-----------|-----------|------------|
+| keygen | 25,382 ops/s (39 us) | 18,008 ops/s (56 us) | 9,261 ops/s (108 us) |
+| encapsulate | 26,544 ops/s (38 us) | 17,125 ops/s (58 us) | 12,650 ops/s (79 us) |
+| decapsulate | 24,457 ops/s (41 us) | 14,096 ops/s (71 us) | 10,246 ops/s (98 us) |
+
+### ML-DSA (FIPS 204)
+
+| Operation | ML-DSA-44 | ML-DSA-65 | ML-DSA-87 |
+|-----------|----------|----------|----------|
+| keygen | 10,868 ops/s (92 us) | 7,095 ops/s (141 us) | 3,944 ops/s (254 us) |
+| sign | 3,730 ops/s (268 us) | 1,734 ops/s (577 us) | 1,510 ops/s (662 us) |
+| verify | 13,906 ops/s (72 us) | 6,973 ops/s (143 us) | 3,868 ops/s (259 us) |
+
+All operations run in Rust/WASM with constant-time critical paths. Reproduce with `npm run bench`.
 
 ---
 
@@ -188,7 +231,7 @@ try {
 
 #### `init(): Promise<void>`
 
-Initialize the WASM module. Must be called before using any cryptographic functions.
+Initialize the WASM module. Must be called before using any cryptographic functions. WASM modules must be loaded asynchronously; `init()` is a one-time cost at application startup.
 
 - Safe to call multiple times (subsequent calls are no-ops)
 - Safe to call concurrently (parallel calls share the same initialization promise)
@@ -197,6 +240,21 @@ Initialize the WASM module. Must be called before using any cryptographic functi
 ```typescript
 import { init } from 'fips-crypto';
 await init();
+```
+
+**Framework integration patterns:**
+
+```typescript
+// Express / Fastify — initialize at server startup
+import { init } from 'fips-crypto';
+await init();
+app.listen(3000);
+
+// Next.js — initialize in instrumentation hook (instrumentation.ts)
+export async function register() {
+  const { init } = await import('fips-crypto');
+  await init();
+}
 ```
 
 ### ML-KEM (Key Encapsulation)
@@ -456,8 +514,10 @@ Coverage thresholds: 99% statements, 99% functions, 98% branches, 99% lines.
 
 - **Implicit Rejection**: ML-KEM implements implicit rejection to prevent chosen-ciphertext attacks
 - **Input Validation**: All key, ciphertext, seed, and context lengths are validated before processing
-- **Memory Zeroization**: All secret key material is securely erased when no longer needed
-- **Constant-Time Operations**: Critical operations avoid data-dependent timing
+- **Memory Zeroization**: All secret key material is securely erased when no longer needed (via Rust `zeroize` crate)
+- **Constant-Time Operations**: Critical operations avoid data-dependent timing and branching
+
+For a detailed threat model, constant-time analysis, and zeroization boundaries, see [docs/SECURITY-MODEL.md](docs/SECURITY-MODEL.md).
 
 ### Supply Chain Integrity
 
@@ -488,6 +548,18 @@ These algorithms are designed to resist attacks from quantum computers:
 - Use **ML-DSA-65** for general digital signatures
 - Use **SLH-DSA** when you want hash-based security (no lattice assumptions)
 - Consider **hybrid schemes** combining classical and post-quantum algorithms during transition
+
+---
+
+## Compliance Disclaimer
+
+This library implements the **algorithm specifications** defined in FIPS 203 (ML-KEM) and FIPS 204 (ML-DSA). It does **not** constitute a FIPS 140-2 or FIPS 140-3 validated cryptographic module.
+
+- FIPS 203/204/205 define **algorithms** (what computations to perform)
+- FIPS 140-2/140-3 define **module validation** (operational security requirements verified through CMVP)
+- This library has **not** been submitted for CMVP validation
+
+For government or regulated use cases that require FIPS 140 validation, confirm your compliance requirements independently before adopting this library.
 
 ---
 

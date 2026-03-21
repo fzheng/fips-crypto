@@ -87,6 +87,13 @@ const ML_DSA_44_PARAMS: MlDsaParams = {
 
 /**
  * ML-DSA-44 (Security Category 2)
+ *
+ * @example
+ * ```typescript
+ * const { publicKey, secretKey } = await ml_dsa44.keygen();
+ * const sig = await ml_dsa44.sign(secretKey, message);
+ * const valid = await ml_dsa44.verify(publicKey, message, sig);
+ * ```
  */
 export const ml_dsa44: MlDsaAlgorithm = {
   params: ML_DSA_44_PARAMS,
@@ -162,9 +169,14 @@ const ML_DSA_65_PARAMS: MlDsaParams = {
 };
 
 /**
- * ML-DSA-65 (Security Category 3)
+ * ML-DSA-65 (Security Category 3) - **Recommended**
  *
- * This is the recommended parameter set for general use.
+ * @example
+ * ```typescript
+ * const { publicKey, secretKey } = await ml_dsa65.keygen();
+ * const sig = await ml_dsa65.sign(secretKey, message);
+ * const valid = await ml_dsa65.verify(publicKey, message, sig);
+ * ```
  */
 export const ml_dsa65: MlDsaAlgorithm = {
   params: ML_DSA_65_PARAMS,
@@ -241,6 +253,13 @@ const ML_DSA_87_PARAMS: MlDsaParams = {
 
 /**
  * ML-DSA-87 (Security Category 5)
+ *
+ * @example
+ * ```typescript
+ * const { publicKey, secretKey } = await ml_dsa87.keygen();
+ * const sig = await ml_dsa87.sign(secretKey, message);
+ * const valid = await ml_dsa87.verify(publicKey, message, sig);
+ * ```
  */
 export const ml_dsa87: MlDsaAlgorithm = {
   params: ML_DSA_87_PARAMS,
