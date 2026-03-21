@@ -8,21 +8,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.0] - 2026-03-20
 
 ### Added
-- **ML-DSA (FIPS 204)** full implementation: ML-DSA-44, ML-DSA-65, ML-DSA-87
-  - Key generation, signing, and verification
-  - Context parameter support (max 255 bytes)
-  - Seed-based deterministic key generation
+
+**ML-DSA (FIPS 204) — full implementation**
+- ML-DSA-44, ML-DSA-65, ML-DSA-87: key generation, signing, and verification
+- Context parameter support (max 255 bytes per FIPS 204)
+- Seed-based deterministic key generation (32-byte seeds)
+- Rust implementation: NTT (q=8380417), polynomial arithmetic, ExpandA/ExpandS/ExpandMask/SampleInBall, FIPS 204 Algorithms 1-3
+- 9 WASM bindings replacing ML-DSA stubs
 - ML-DSA compliance tests using pre-generated vectors from an independent FIPS 204 implementation
-- Supply chain integrity protection: SHA-256 checksums for all WASM/JS binaries
-- `npm run verify:integrity` command to verify package integrity after install
+
+**Supply chain integrity**
+- SHA-256 checksums generated for all WASM/JS binaries at build time (`checksums.sha256`)
+- `npm run verify:integrity` to verify package integrity after install
+- npm publish workflow with Sigstore provenance (`.github/workflows/publish.yml`)
+
+**Performance benchmarks**
+- ML-KEM benchmark suite: keygen, encapsulate, decapsulate for all 3 variants
+- ML-DSA benchmark suite: keygen, sign, verify for all 3 variants
+- Performance results published in README
+- Benchmark step added to CI with artifact upload
+
+**Auto-init entry point**
+- `import from 'fips-crypto/auto'` — no `init()` call needed, WASM loads lazily on first use
+- New `./auto` export in package.json
+
+**Documentation**
+- SECURITY.md: vulnerability reporting policy, response timelines, scope
+- CONTRIBUTING.md: development setup, PR requirements, project structure
+- CHANGELOG.md: backfilled history from 0.1.0 to present
+- docs/SECURITY-MODEL.md: threat model, constant-time analysis, zeroization boundaries, RNG, honest limitations
+- FIPS 140 vs FIPS 203/204 compliance disclaimer in README
+- "Why fips-crypto?" comparison table in README
+- Framework integration patterns (Express, Next.js) for `init()`
+- Subpackage import documentation for tree-shaking
+- FIPS 204 badge
+
+**Testing**
 - Property-based tests with fast-check for ML-KEM
 - Concurrent initialization safety for `init()` / `initMlKem()` / `initMlDsa()`
-- Safeguard tests for cross-algorithm isolation and boundary conditions
-- ESLint configuration
+- Safeguard tests: cross-algorithm isolation, boundary values, API contract regression
+- Script tests: checksum generation/verification, WASM patch, tamper detection
+- Auto-init entry point tests
+- 567 total tests (up from 324 in 0.4.0), 100% statement/function/line coverage
 
 ### Changed
+- Package description updated to accurately reflect implemented algorithms (removed premature FIPS 205 claim)
 - Coverage thresholds raised to 99/99/97/99 (statements/functions/branches/lines)
-- Build scripts now use `shx` for cross-platform compatibility (Windows/macOS/Linux)
+- Build scripts use `shx` for cross-platform compatibility (Windows/macOS/Linux)
+- README restructured for npm conversion: value proposition first, benchmark data, comparison table
+- JSDoc `@example` tags added to all 6 algorithm exports
 
 ### Fixed
 - ML-DSA-65 signature size corrected from 3293 to 3309 bytes per FIPS 204
