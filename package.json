@@ -32,8 +32,8 @@
     "dist"
   ],
   "scripts": {
-    "build:wasm": "wasm-pack build rust --target bundler --release --out-dir ../pkg && wasm-pack build rust --target nodejs --release --out-dir ../pkg-node",
-    "build:ts": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && cp -r pkg dist/pkg && rm -f dist/pkg/.gitignore",
+    "build:wasm": "wasm-pack build rust --target bundler --release --out-dir ../pkg && wasm-pack build rust --target nodejs --release --out-dir ../pkg-node && node scripts/patch-wasm.cjs",
+    "build:ts": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && shx cp -r pkg dist/pkg && shx rm -f dist/pkg/.gitignore",
     "build": "npm run build:wasm && npm run build:ts",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -41,7 +41,7 @@
     "test:vectors": "vitest run tests/vectors/",
     "bench": "vitest bench",
     "lint": "eslint src tests --ext .ts",
-    "clean": "rm -rf dist pkg pkg-node"
+    "clean": "shx rm -rf dist pkg pkg-node"
   },
   "repository": {
     "type": "git",
@@ -74,10 +74,13 @@
   "homepage": "https://github.com/fzheng/fips-crypto#readme",
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^8.57.1",
+    "@typescript-eslint/parser": "^8.57.1",
     "@vitest/coverage-v8": "^1.2.0",
     "esbuild": "^0.27.0",
     "eslint": "^8.56.0",
     "fast-check": "^3.15.0",
+    "shx": "^0.4.0",
     "typescript": "^5.3.0",
     "vite-plugin-top-level-await": "^1.6.0",
     "vite-plugin-wasm": "^3.6.0",

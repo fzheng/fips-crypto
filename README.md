@@ -191,6 +191,16 @@ try {
     console.log('Message:', error.message);
   }
 }
+
+try {
+  // This will fail - seed must be exactly 64 bytes for keygen
+  const badSeed = new Uint8Array(32);
+  await ml_kem768.keygen(badSeed);
+} catch (error) {
+  if (error instanceof FipsCryptoError) {
+    console.log('Error code:', error.code); // 'INVALID_SEED_LENGTH'
+  }
+}
 ```
 
 ---
@@ -202,6 +212,10 @@ try {
 #### `init(): Promise<void>`
 
 Initialize the WASM module. Must be called before using any cryptographic functions.
+
+- Safe to call multiple times (subsequent calls are no-ops)
+- Safe to call concurrently (parallel calls share the same initialization promise)
+- Throws `FipsCryptoError` with code `WASM_NOT_INITIALIZED` if the WASM module fails to load
 
 ```typescript
 import { init } from 'fips-crypto';
@@ -220,6 +234,7 @@ Generate a key pair.
 
 - `seed` (optional): 64-byte seed for deterministic generation
 - Returns: `{ publicKey: Uint8Array, secretKey: Uint8Array }`
+- Throws: `INVALID_SEED_LENGTH` if seed is provided but not exactly 64 bytes
 
 ##### `encapsulate(publicKey: Uint8Array, seed?: Uint8Array): Promise<MlKemEncapsulation>`
 
@@ -228,6 +243,8 @@ Encapsulate a shared secret.
 - `publicKey`: Recipient's public key
 - `seed` (optional): 32-byte seed for deterministic encapsulation
 - Returns: `{ ciphertext: Uint8Array, sharedSecret: Uint8Array }`
+- Throws: `INVALID_KEY_LENGTH` if public key has wrong length
+- Throws: `INVALID_SEED_LENGTH` if seed is provided but not exactly 32 bytes
 
 ##### `decapsulate(secretKey: Uint8Array, ciphertext: Uint8Array): Promise<Uint8Array>`
 
@@ -236,6 +253,8 @@ Decapsulate to recover the shared secret.
 - `secretKey`: Your secret key
 - `ciphertext`: The ciphertext from encapsulation
 - Returns: 32-byte shared secret
+- Throws: `INVALID_KEY_LENGTH` if secret key has wrong length
+- Throws: `INVALID_CIPHERTEXT_LENGTH` if ciphertext has wrong length
 
 ##### `params: MlKemParams`
 
@@ -260,13 +279,20 @@ Parameter set information:
 
 #### 1. Install Rust
 
+**macOS / Linux:**
+
 ```bash
-# macOS / Linux
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Follow the prompts, then restart your terminal or run:
 source $HOME/.cargo/env
+```
 
+**Windows:**
+
+Download and run [rustup-init.exe](https://rustup.rs/). During installation, you will be prompted to install the Visual Studio C++ Build Tools — follow the instructions to install them. After installation, restart your terminal.
+
+```bash
 # Verify installation
 rustc --version
 cargo --version
@@ -293,7 +319,7 @@ wasm-pack --version
 
 #### 4. Install Node.js (18+)
 
-Download from [nodejs.org](https://nodejs.org/) or use a version manager like `nvm`.
+Download from [nodejs.org](https://nodejs.org/) or use a version manager like `nvm` (macOS/Linux) or [nvm-windows](https://github.com/coreybutler/nvm-windows) (Windows).
 
 ### Build Steps
 
@@ -322,6 +348,7 @@ npm test
 | `npm test` | Run test suite |
 | `npm run test:coverage` | Run tests with coverage |
 | `npm run bench` | Run benchmarks |
+| `npm run lint` | Run ESLint |
 | `npm run clean` | Clean build artifacts |
 
 ---
@@ -331,7 +358,7 @@ npm test
 ### Running Tests
 
 ```bash
-# Run all JavaScript/TypeScript tests (unit + compliance)
+# Run all JavaScript/TypeScript tests (unit + compliance + property-based)
 npm test
 
 # Run Rust tests
@@ -343,7 +370,14 @@ npm run test:coverage
 
 ### Test Suite
 
-The test suite covers both Rust (`cargo test`) and JavaScript/TypeScript (`npm test`) layers, including FIPS 203 KAT (Known Answer Test) vector compliance tests that verify our ML-KEM output against pre-generated vectors from an independent implementation.
+The test suite covers both Rust (`cargo test`) and JavaScript/TypeScript (`npm test`) layers:
+
+- **Unit tests**: Comprehensive parameter validation, input validation, and functional tests for all ML-KEM variants
+- **Compliance tests**: FIPS 203 KAT (Known Answer Test) vector verification against an independent implementation
+- **Property-based tests**: Randomized testing with [fast-check](https://github.com/dubzzz/fast-check) to verify cryptographic properties (roundtrip correctness, determinism, seed validation) hold for arbitrary inputs
+- **Error path tests**: WASM initialization failure, invalid inputs, and uninitialized module handling
+
+Coverage thresholds: 99% statements, 99% functions, 98% branches, 99% lines.
 
 ### Adding New Features
 
@@ -393,6 +427,7 @@ The test suite covers both Rust (`cargo test`) and JavaScript/TypeScript (`npm t
 ### Implementation Security
 
 - **Implicit Rejection**: ML-KEM implements implicit rejection to prevent chosen-ciphertext attacks
+- **Input Validation**: All key, ciphertext, and seed lengths are validated before processing
 - **Memory Zeroization**: All secret key material is securely erased when no longer needed
 - **Constant-Time Operations**: Critical operations avoid data-dependent timing
 
@@ -454,7 +489,8 @@ Contributions are welcome! Please:
 
 1. Fork the repository
 2. Create a feature branch
-3. Ensure all tests pass (`npm test`)
-4. Submit a pull request
+3. Ensure linting passes (`npm run lint`)
+4. Ensure all tests pass (`npm test`)
+5. Submit a pull request
 
 For major changes, please open an issue first to discuss the proposed changes.

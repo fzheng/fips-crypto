@@ -15,10 +15,10 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.d.ts', 'src/loader/**'],
       thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 80,
-        statements: 80,
+        lines: 99,
+        functions: 99,
+        branches: 98,
+        statements: 99,
       },
     },
     benchmark: {

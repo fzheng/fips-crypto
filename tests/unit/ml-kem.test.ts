@@ -184,6 +184,65 @@ describe('ML-KEM', () => {
         const invalidCt = new Uint8Array(100);
         await expect(impl.decapsulate(secretKey, invalidCt)).rejects.toThrow('Invalid ciphertext length');
       });
+
+      it(`${name}: rejects invalid seed length in keygen (too short)`, async () => {
+        const shortSeed = new Uint8Array(32);
+        await expect(impl.keygen(shortSeed)).rejects.toThrow('Invalid seed length for keygen');
+      });
+
+      it(`${name}: rejects invalid seed length in keygen (too long)`, async () => {
+        const longSeed = new Uint8Array(128);
+        await expect(impl.keygen(longSeed)).rejects.toThrow('Invalid seed length for keygen');
+      });
+
+      it(`${name}: rejects invalid seed length in encapsulate (too short)`, async () => {
+        const { publicKey } = await impl.keygen();
+        const shortSeed = new Uint8Array(16);
+        await expect(impl.encapsulate(publicKey, shortSeed)).rejects.toThrow('Invalid seed length for encapsulation');
+      });
+
+      it(`${name}: rejects invalid seed length in encapsulate (too long)`, async () => {
+        const { publicKey } = await impl.keygen();
+        const longSeed = new Uint8Array(64);
+        await expect(impl.encapsulate(publicKey, longSeed)).rejects.toThrow('Invalid seed length for encapsulation');
+      });
+
+      it(`${name}: accepts correct seed length in keygen (64 bytes)`, async () => {
+        const seed = new Uint8Array(64).fill(0x42);
+        const { publicKey, secretKey } = await impl.keygen(seed);
+        expect(publicKey.length).toBe(impl.params.publicKeyBytes);
+        expect(secretKey.length).toBe(impl.params.secretKeyBytes);
+      });
+
+      it(`${name}: accepts correct seed length in encapsulate (32 bytes)`, async () => {
+        const { publicKey } = await impl.keygen();
+        const seed = new Uint8Array(32).fill(0x42);
+        const { ciphertext, sharedSecret } = await impl.encapsulate(publicKey, seed);
+        expect(ciphertext.length).toBe(impl.params.ciphertextBytes);
+        expect(sharedSecret.length).toBe(32);
+      });
+
+      it(`${name}: deterministic encapsulation with seed produces same output`, async () => {
+        const { publicKey } = await impl.keygen();
+        const seed = new Uint8Array(32).fill(0xAB);
+        const result1 = await impl.encapsulate(publicKey, seed);
+        const result2 = await impl.encapsulate(publicKey, seed);
+        expect(result1.ciphertext).toEqual(result2.ciphertext);
+        expect(result1.sharedSecret).toEqual(result2.sharedSecret);
+      });
+
+      it(`${name}: keygen without seed (undefined) works`, async () => {
+        const { publicKey, secretKey } = await impl.keygen(undefined);
+        expect(publicKey.length).toBe(impl.params.publicKeyBytes);
+        expect(secretKey.length).toBe(impl.params.secretKeyBytes);
+      });
+
+      it(`${name}: encapsulate without seed (undefined) works`, async () => {
+        const { publicKey } = await impl.keygen();
+        const { ciphertext, sharedSecret } = await impl.encapsulate(publicKey, undefined);
+        expect(ciphertext.length).toBe(impl.params.ciphertextBytes);
+        expect(sharedSecret.length).toBe(32);
+      });
     }
   });
 
