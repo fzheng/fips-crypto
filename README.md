@@ -11,7 +11,6 @@
 Rust/WASM implementations of NIST post-quantum cryptography algorithms for Node.js and bundler-based browser apps.
 
 > This package implements the algorithm specifications in FIPS 203, FIPS 204, and FIPS 205.
-> It is not a FIPS 140-2 or FIPS 140-3 validated cryptographic module.
 
 ## Why fips-crypto
 
