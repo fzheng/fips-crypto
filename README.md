@@ -474,7 +474,7 @@ The test suite covers both Rust (`cargo test`) and JavaScript/TypeScript (`npm t
 - **Error path tests**: WASM initialization failure, invalid inputs, and uninitialized module handling
 - **Safeguard tests**: Cross-algorithm isolation, boundary values, API contract regression guards
 
-Coverage thresholds: 99% statements, 99% functions, 98% branches, 99% lines.
+Coverage thresholds: 99% statements, 99% functions, 97% branches, 99% lines.
 
 ### Adding New Features
 
@@ -532,10 +532,13 @@ For a detailed threat model, constant-time analysis, and zeroization boundaries,
 
 ### Supply Chain Integrity
 
-Every build generates SHA-256 checksums of the WASM binary and JS binding files, stored in `dist/pkg/checksums.sha256`. This allows verification that the published package has not been tampered with.
+Every build generates SHA-256 checksums of the published WASM assets, stored in `dist/pkg/checksums.sha256` and `dist/pkg-node/checksums.sha256`. This allows verification that the published package has not been tampered with.
 
 ```bash
 # Verify checksums after install
+npx fips-crypto-verify-integrity
+
+# Or from the package directory itself
 npm run verify:integrity
 
 # Or manually with standard tools

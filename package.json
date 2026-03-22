@@ -6,6 +6,9 @@
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/types/index.d.ts",
+  "bin": {
+    "fips-crypto-verify-integrity": "./dist/verify-integrity.cjs"
+  },
   "exports": {
     ".": {
       "import": "./dist/esm/index.js",
@@ -38,9 +41,9 @@
   ],
   "scripts": {
     "build:wasm": "wasm-pack build rust --target bundler --release --out-dir ../pkg && wasm-pack build rust --target nodejs --release --out-dir ../pkg-node && node scripts/patch-wasm.cjs && node scripts/generate-checksums.cjs",
-    "build:ts": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && shx cp -r pkg dist/pkg && shx rm -f dist/pkg/.gitignore",
+    "build:ts": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node scripts/prepare-dist.cjs",
     "build": "npm run build:wasm && npm run build:ts",
-    "verify:integrity": "node scripts/verify-integrity.cjs",
+    "verify:integrity": "node dist/verify-integrity.cjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

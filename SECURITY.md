@@ -56,6 +56,9 @@ The following are considered in-scope for security reports:
 Every published release includes SHA-256 checksums for all WASM and JS binding files. Verify package integrity after installation:
 
 ```bash
+npx fips-crypto-verify-integrity
+
+# Or from the package directory itself
 npm run verify:integrity
 ```
 
