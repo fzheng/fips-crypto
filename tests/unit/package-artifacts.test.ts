@@ -46,13 +46,13 @@ describe('published artifact smoke checks', () => {
     expect(output.trim()).toBe('800');
   });
 
-  it('loads an SLH-DSA small variant from the built ESM artifact', () => {
+  it('loads an SLH-DSA small variant from the Node ESM artifact', () => {
     const output = runNode(`
       const path = require('path');
       const { pathToFileURL } = require('url');
 
       (async () => {
-        const mod = await import(pathToFileURL(path.join(process.cwd(), 'dist', 'esm', 'index.js')).href);
+        const mod = await import(pathToFileURL(path.join(process.cwd(), 'dist', 'node-esm', 'index.js')).href);
         await mod.init();
         const { publicKey } = await mod.slh_dsa_sha2_192s.keygen(new Uint8Array(72));
         console.log(publicKey.length);

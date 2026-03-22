@@ -8,12 +8,13 @@
 //! 3. Compute ciphertext c = K-PKE.Encrypt(ek, m, r)
 //! 4. Return (c, K)
 
-use crate::ml_kem::params::MlKemParams;
 use crate::ml_kem::MlKemEncapsulation;
+use crate::ml_kem::params::MlKemParams;
 use crate::primitives::polynomial::{Poly, PolyMat, PolyVec};
 use crate::primitives::random::random_bytes;
 use crate::primitives::sha3::{g, h};
 use wasm_bindgen::JsError;
+use zeroize::Zeroize;
 
 /// ML-KEM Encapsulation -- FIPS 203 Algorithm 17 (ML-KEM.Encaps_internal).
 ///
@@ -47,13 +48,17 @@ pub fn ml_kem_encapsulate<const K: usize>(
             m.copy_from_slice(&s[..32]);
         }
         Some(s) => {
+            m.zeroize();
             return Err(JsError::new(&format!(
                 "Seed must be at least 32 bytes, got {}",
                 s.len()
             )));
         }
         None => {
-            random_bytes(&mut m).map_err(|_| JsError::new("Failed to generate random bytes"))?;
+            if random_bytes(&mut m).is_err() {
+                m.zeroize();
+                return Err(JsError::new("Failed to generate random bytes"));
+            }
         }
     }
 
@@ -64,17 +69,22 @@ pub fn ml_kem_encapsulate<const K: usize>(
     let mut g_input = [0u8; 64];
     g_input[..32].copy_from_slice(&m);
     g_input[32..].copy_from_slice(&h_ek);
-    let g_output = g(&g_input);
+    let mut g_output = g(&g_input);
     let shared_secret: [u8; 32] = g_output[..32].try_into().unwrap();
-    let r = &g_output[32..64];
 
     // c <- K-PKE.Encrypt(ek, m, r)
-    let ciphertext = k_pke_encrypt::<K>(ek, &m, r, params)?;
+    let result = k_pke_encrypt::<K>(ek, &m, &g_output[32..64], params).map(|ciphertext| {
+        MlKemEncapsulation {
+            ciphertext,
+            shared_secret,
+        }
+    });
 
-    Ok(MlKemEncapsulation {
-        ciphertext,
-        shared_secret,
-    })
+    g_output.zeroize();
+    g_input.zeroize();
+    m.zeroize();
+
+    result
 }
 
 /// K-PKE Encryption -- FIPS 203 Algorithm 14 (K-PKE.Encrypt).
@@ -180,7 +190,9 @@ fn decode_message(m: &[u8; 32]) -> Poly {
 mod tests {
     use super::*;
     use crate::ml_kem::keygen::ml_kem_keygen;
-    use crate::ml_kem::params::{ML_KEM_512, ML_KEM_768, ML_KEM_1024, MLKEM512_K, MLKEM768_K, MLKEM1024_K};
+    use crate::ml_kem::params::{
+        ML_KEM_512, ML_KEM_768, ML_KEM_1024, MLKEM512_K, MLKEM768_K, MLKEM1024_K,
+    };
 
     #[test]
     fn test_encapsulate_mlkem512() {
@@ -211,8 +223,10 @@ mod tests {
         let keypair = ml_kem_keygen::<MLKEM768_K>(None, &ML_KEM_768).unwrap();
         let seed = [0x42u8; 32];
 
-        let encap1 = ml_kem_encapsulate::<MLKEM768_K>(&keypair.ek, Some(&seed), &ML_KEM_768).unwrap();
-        let encap2 = ml_kem_encapsulate::<MLKEM768_K>(&keypair.ek, Some(&seed), &ML_KEM_768).unwrap();
+        let encap1 =
+            ml_kem_encapsulate::<MLKEM768_K>(&keypair.ek, Some(&seed), &ML_KEM_768).unwrap();
+        let encap2 =
+            ml_kem_encapsulate::<MLKEM768_K>(&keypair.ek, Some(&seed), &ML_KEM_768).unwrap();
 
         assert_eq!(encap1.ciphertext, encap2.ciphertext);
         assert_eq!(encap1.shared_secret, encap2.shared_secret);

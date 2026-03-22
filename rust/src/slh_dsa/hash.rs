@@ -342,7 +342,7 @@ mod tests {
     fn test_different_adrs_different_output() {
         let pk = [42u8; 16];
         let m = [1u8; 16];
-        let mut adrs1 = Adrs::new();
+        let adrs1 = Adrs::new();
         let mut adrs2 = Adrs::new();
         adrs2.set_layer_address(1);
         let out1 = t_l(&pk, &adrs1, &m, &SLH_DSA_SHAKE_128F);

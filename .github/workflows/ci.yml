@@ -74,6 +74,10 @@ jobs:
       - name: Run JS tests with coverage
         run: npm run test:coverage
 
+      - name: Run packed artifact smoke test
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == 22
+        run: npm run test:pack
+
       - name: Run benchmarks
         if: matrix.os == 'ubuntu-latest' && matrix.node-version == 22
         run: npx vitest bench --run

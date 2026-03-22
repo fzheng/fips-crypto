@@ -11,6 +11,7 @@ use crate::ml_kem::params::MlKemParams;
 use crate::primitives::polynomial::{Poly, PolyVec};
 use crate::primitives::sha3::{g, j};
 use wasm_bindgen::JsError;
+use zeroize::Zeroize;
 
 /// ML-KEM Decapsulation -- FIPS 203 Algorithm 18 (ML-KEM.Decaps_internal).
 ///
@@ -64,35 +65,42 @@ pub fn ml_kem_decapsulate<const K: usize>(
     let z = &dk[dk_pke_len + ek_len + 32..];
 
     // m' <- K-PKE.Decrypt(dk_pke, c)
-    let m_prime = k_pke_decrypt::<K>(dk_pke, c, params)?;
+    let mut m_prime = k_pke_decrypt::<K>(dk_pke, c, params)?;
 
     // (K', r') <- G(m' || H(ek))
     let mut g_input = [0u8; 64];
     g_input[..32].copy_from_slice(&m_prime);
     g_input[32..].copy_from_slice(h_ek);
-    let g_output = g(&g_input);
-    let k_prime = &g_output[..32];
-    let r_prime = &g_output[32..64];
+    let mut g_output = g(&g_input);
 
     // K_bar <- J(z || c)
     let mut j_input = Vec::with_capacity(32 + c.len());
     j_input.extend_from_slice(z);
     j_input.extend_from_slice(c);
-    let k_bar = j(&j_input, 32);
+    let mut k_bar = j(&j_input, 32);
 
     // c' <- K-PKE.Encrypt(ek, m', r')
-    let c_prime = k_pke_encrypt::<K>(ek, &m_prime, r_prime, params)?;
+    let result = k_pke_encrypt::<K>(ek, &m_prime, &g_output[32..64], params).map(|mut c_prime| {
+        // Implicit rejection: if c != c', return K_bar instead of K'
+        // This must be done in constant time to avoid timing attacks
+        let mut shared_secret = [0u8; 32];
+        let ciphertexts_equal = constant_time_eq(c, &c_prime);
 
-    // Implicit rejection: if c != c', return K_bar instead of K'
-    // This must be done in constant time to avoid timing attacks
-    let mut shared_secret = [0u8; 32];
-    let ciphertexts_equal = constant_time_eq(c, &c_prime);
+        for i in 0..32 {
+            shared_secret[i] = constant_time_select(ciphertexts_equal, g_output[i], k_bar[i]);
+        }
 
-    for i in 0..32 {
-        shared_secret[i] = constant_time_select(ciphertexts_equal, k_prime[i], k_bar[i]);
-    }
+        c_prime.zeroize();
+        shared_secret
+    });
 
-    Ok(shared_secret)
+    k_bar.zeroize();
+    j_input.zeroize();
+    g_output.zeroize();
+    g_input.zeroize();
+    m_prime.zeroize();
+
+    result
 }
 
 /// K-PKE Decryption -- FIPS 203 Algorithm 16 (K-PKE.Decrypt).
@@ -218,7 +226,8 @@ mod tests {
     fn test_roundtrip_mlkem512() {
         let keypair = ml_kem_keygen::<MLKEM512_K>(None, &ML_KEM_512).unwrap();
         let encap = ml_kem_encapsulate::<MLKEM512_K>(&keypair.ek, None, &ML_KEM_512).unwrap();
-        let decapped = ml_kem_decapsulate::<MLKEM512_K>(&keypair.dk, &encap.ciphertext, &ML_KEM_512).unwrap();
+        let decapped =
+            ml_kem_decapsulate::<MLKEM512_K>(&keypair.dk, &encap.ciphertext, &ML_KEM_512).unwrap();
         assert_eq!(encap.shared_secret, decapped);
     }
 
@@ -226,7 +235,8 @@ mod tests {
     fn test_roundtrip_mlkem768() {
         let keypair = ml_kem_keygen::<MLKEM768_K>(None, &ML_KEM_768).unwrap();
         let encap = ml_kem_encapsulate::<MLKEM768_K>(&keypair.ek, None, &ML_KEM_768).unwrap();
-        let decapped = ml_kem_decapsulate::<MLKEM768_K>(&keypair.dk, &encap.ciphertext, &ML_KEM_768).unwrap();
+        let decapped =
+            ml_kem_decapsulate::<MLKEM768_K>(&keypair.dk, &encap.ciphertext, &ML_KEM_768).unwrap();
         assert_eq!(encap.shared_secret, decapped);
     }
 
@@ -234,7 +244,9 @@ mod tests {
     fn test_roundtrip_mlkem1024() {
         let keypair = ml_kem_keygen::<MLKEM1024_K>(None, &ML_KEM_1024).unwrap();
         let encap = ml_kem_encapsulate::<MLKEM1024_K>(&keypair.ek, None, &ML_KEM_1024).unwrap();
-        let decapped = ml_kem_decapsulate::<MLKEM1024_K>(&keypair.dk, &encap.ciphertext, &ML_KEM_1024).unwrap();
+        let decapped =
+            ml_kem_decapsulate::<MLKEM1024_K>(&keypair.dk, &encap.ciphertext, &ML_KEM_1024)
+                .unwrap();
         assert_eq!(encap.shared_secret, decapped);
     }
 
@@ -244,8 +256,10 @@ mod tests {
         let encap_seed = [0x43u8; 32];
 
         let keypair = ml_kem_keygen::<MLKEM768_K>(Some(&key_seed), &ML_KEM_768).unwrap();
-        let encap = ml_kem_encapsulate::<MLKEM768_K>(&keypair.ek, Some(&encap_seed), &ML_KEM_768).unwrap();
-        let decapped = ml_kem_decapsulate::<MLKEM768_K>(&keypair.dk, &encap.ciphertext, &ML_KEM_768).unwrap();
+        let encap =
+            ml_kem_encapsulate::<MLKEM768_K>(&keypair.ek, Some(&encap_seed), &ML_KEM_768).unwrap();
+        let decapped =
+            ml_kem_decapsulate::<MLKEM768_K>(&keypair.dk, &encap.ciphertext, &ML_KEM_768).unwrap();
 
         assert_eq!(encap.shared_secret, decapped);
     }
@@ -260,7 +274,8 @@ mod tests {
         corrupted_ct[0] ^= 0xFF;
 
         // Decapsulation should return a different (pseudorandom) shared secret
-        let decapped = ml_kem_decapsulate::<MLKEM768_K>(&keypair.dk, &corrupted_ct, &ML_KEM_768).unwrap();
+        let decapped =
+            ml_kem_decapsulate::<MLKEM768_K>(&keypair.dk, &corrupted_ct, &ML_KEM_768).unwrap();
 
         // The decapped secret should NOT match the original (with overwhelming probability)
         assert_ne!(encap.shared_secret, decapped);
@@ -329,12 +344,16 @@ mod tests {
             assert_eq!(
                 constant_time_select(1, a_val, 0),
                 a_val,
-                "select(1, {}, 0) should be {}", a_val, a_val
+                "select(1, {}, 0) should be {}",
+                a_val,
+                a_val
             );
             assert_eq!(
                 constant_time_select(0, 0, a_val),
                 a_val,
-                "select(0, 0, {}) should be {}", a_val, a_val
+                "select(0, 0, {}) should be {}",
+                a_val,
+                a_val
             );
         }
         // Also verify crossover for a representative sample
@@ -351,7 +370,10 @@ mod tests {
         // A polynomial with all-zero coefficients should encode to all-zero message
         let zero_poly = Poly::zero();
         let m_from_zero = encode_message(&zero_poly);
-        assert_eq!(m_from_zero, [0u8; 32], "Encoding zero polynomial should give all-zero message");
+        assert_eq!(
+            m_from_zero, [0u8; 32],
+            "Encoding zero polynomial should give all-zero message"
+        );
 
         // A polynomial with all coefficients = ceil(q/2) = 1665 should encode to all-ones
         let mut ones_poly = Poly::zero();
@@ -360,6 +382,9 @@ mod tests {
             ones_poly.coeffs[i] = half_q as i16;
         }
         let m_from_ones = encode_message(&ones_poly);
-        assert_eq!(m_from_ones, [0xFFu8; 32], "Encoding ceil(q/2) polynomial should give all-one message");
+        assert_eq!(
+            m_from_ones, [0xFFu8; 32],
+            "Encoding ceil(q/2) polynomial should give all-one message"
+        );
     }
 }

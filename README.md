@@ -8,622 +8,326 @@
 [![FIPS 204](https://img.shields.io/badge/FIPS%20204-ML--DSA-blue)](https://csrc.nist.gov/pubs/fips/204/final)
 [![FIPS 205](https://img.shields.io/badge/FIPS%20205-SLH--DSA-blue)](https://csrc.nist.gov/pubs/fips/205/final)
 
-Post-quantum cryptography for Node.js and browsers, implementing FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), and FIPS 205 (SLH-DSA). Built in Rust, compiled to WebAssembly for high performance with constant-time operations, memory zeroization, and supply chain integrity verification.
+Rust/WASM implementations of NIST post-quantum cryptography algorithms for Node.js and bundler-based browser apps.
 
-### Why fips-crypto?
+> This package implements the algorithm specifications in FIPS 203, FIPS 204, and FIPS 205.
+> It is not a FIPS 140-2 or FIPS 140-3 validated cryptographic module.
 
-| Feature | fips-crypto | Pure-JS alternatives |
-|---------|------------|---------------------|
-| Implementation | Rust compiled to WASM | JavaScript |
-| Constant-time operations | Yes (Rust, no secret-dependent branching) | Typically no |
-| Memory zeroization | Yes (`zeroize` crate, automatic on drop) | Not reliable (GC) |
-| Supply chain verification | SHA-256 checksums + npm provenance | Varies |
-| FIPS 203 (ML-KEM) | All 3 parameter sets | Varies |
-| FIPS 204 (ML-DSA) | All 3 parameter sets | Varies |
-| FIPS 205 (SLH-DSA) | All 12 parameter sets | Varies |
+## Why fips-crypto
 
-## Features
+- ML-KEM, ML-DSA, and SLH-DSA in one package
+- ESM, CommonJS, and lazy auto-init entrypoints
+- TypeScript-first API with explicit input-size and context validation
+- Rust core with constant-time-oriented critical paths and Rust-side zeroization of secret material
+- Built-in package integrity verification plus npm provenance support
 
-- **ML-KEM (FIPS 203)** - Module-Lattice-Based Key-Encapsulation Mechanism
-  - ML-KEM-512 (Security Category 1, ~AES-128)
-  - ML-KEM-768 (Security Category 3, ~AES-192) - **Recommended**
-  - ML-KEM-1024 (Security Category 5, ~AES-256)
+## Supported algorithms
 
-- **ML-DSA (FIPS 204)** - Module-Lattice-Based Digital Signature Algorithm
-  - ML-DSA-44 (Security Category 2)
-  - ML-DSA-65 (Security Category 3) - **Recommended**
-  - ML-DSA-87 (Security Category 5)
+### ML-KEM (FIPS 203)
 
-- **SLH-DSA (FIPS 205)** - Stateless Hash-Based Digital Signature Algorithm
-  - 12 parameter sets (SHA2/SHAKE × 128/192/256 × fast/small)
+- `ml_kem512`
+- `ml_kem768` - recommended default
+- `ml_kem1024`
 
----
+### ML-DSA (FIPS 204)
 
-## Table of Contents
+- `ml_dsa44`
+- `ml_dsa65` - recommended default
+- `ml_dsa87`
 
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Usage Examples](#usage-examples)
-- [API Reference](#api-reference)
-- [Building from Source](#building-from-source)
-- [Development](#development)
-- [Algorithm Parameters](#algorithm-parameters)
-- [Security Considerations](#security-considerations)
-- [Standards Compliance](#standards-compliance)
+### SLH-DSA (FIPS 205)
 
----
+All 12 parameter sets are implemented:
+
+- SHA2: `slh_dsa_sha2_128s`, `slh_dsa_sha2_128f`, `slh_dsa_sha2_192s`, `slh_dsa_sha2_192f`, `slh_dsa_sha2_256s`, `slh_dsa_sha2_256f`
+- SHAKE: `slh_dsa_shake_128s`, `slh_dsa_shake_128f`, `slh_dsa_shake_192s`, `slh_dsa_shake_192f`, `slh_dsa_shake_256s`, `slh_dsa_shake_256f`
+
+`f` variants sign faster and produce larger signatures. `s` variants produce smaller signatures and sign more slowly.
 
 ## Installation
-
-### From npm
 
 ```bash
 npm install fips-crypto
 ```
 
-### Subpackage Imports
+### Entrypoints
 
-Import only what you need to minimize bundle size:
+| Import path | Use case |
+|-------------|----------|
+| `fips-crypto` | Main ESM/CJS entrypoint with explicit `init()` |
+| `fips-crypto/auto` | Lazy initialization on first use |
+| `fips-crypto/ml-kem` | ML-KEM-only import surface |
+| `fips-crypto/ml-dsa` | ML-DSA-only import surface |
+| `fips-crypto/slh-dsa` | SLH-DSA-only import surface |
 
-```typescript
-import { ml_kem768 } from 'fips-crypto/ml-kem';
-import { ml_dsa65 } from 'fips-crypto/ml-dsa';
-```
-
-### Runtime Compatibility
+### Runtime support
 
 | Runtime | Status | Notes |
 |---------|--------|-------|
-| Node.js 18+ | Supported | Full CI coverage (Ubuntu, macOS, Windows) |
-| Browsers | Supported | Via bundler (Vite, webpack, etc.) with WASM plugin |
-| Bun | Untested | WASM support available; community reports welcome |
-| Deno | Untested | WASM support available; community reports welcome |
+| Node.js 18+ | Supported | CI coverage on Linux, macOS, and Windows |
+| Browsers | Supported | Requires a bundler/runtime that supports WASM module loading |
+| Bun | Untested | Community validation welcome |
+| Deno | Untested | Community validation welcome |
 
-### From Source
+## Quick start
 
-See [Building from Source](#building-from-source) below.
+### Recommended: auto-init
 
----
-
-## Quick Start
-
-### Recommended: Auto-Init
-
-```typescript
+```ts
 import { ml_kem768, ml_dsa65 } from 'fips-crypto/auto';
 
-// No init() needed — WASM loads lazily on first use
-
-// Key encapsulation
 const { publicKey, secretKey } = await ml_kem768.keygen();
 const { ciphertext, sharedSecret } = await ml_kem768.encapsulate(publicKey);
-const bobSecret = await ml_kem768.decapsulate(secretKey, ciphertext);
-
-// Digital signatures
-const { publicKey: pk, secretKey: sk } = await ml_dsa65.keygen();
-const message = new TextEncoder().encode('Hello, post-quantum world!');
-const signature = await ml_dsa65.sign(sk, message);
-const valid = await ml_dsa65.verify(pk, message, signature); // true
-```
-
-### Manual Init (for precise control)
-
-```typescript
-import { init, ml_kem768 } from 'fips-crypto';
-
-// Initialize WASM once at application startup
-await init();
-
-const { publicKey, secretKey } = await ml_kem768.keygen();
-const { ciphertext, sharedSecret } = await ml_kem768.encapsulate(publicKey);
-const bobSecret = await ml_kem768.decapsulate(secretKey, ciphertext);
-console.log('Secrets match:', Buffer.from(sharedSecret).equals(Buffer.from(bobSecret)));
-```
-
----
-
-## Performance
-
-Benchmarked with `npm run bench` (vitest bench, Node.js 22, Windows 11, AMD Ryzen 7 5800X).
-
-### ML-KEM (FIPS 203)
-
-| Operation | ML-KEM-512 | ML-KEM-768 | ML-KEM-1024 |
-|-----------|-----------|-----------|------------|
-| keygen | 25,382 ops/s (39 us) | 18,008 ops/s (56 us) | 9,261 ops/s (108 us) |
-| encapsulate | 26,544 ops/s (38 us) | 17,125 ops/s (58 us) | 12,650 ops/s (79 us) |
-| decapsulate | 24,457 ops/s (41 us) | 14,096 ops/s (71 us) | 10,246 ops/s (98 us) |
-
-### ML-DSA (FIPS 204)
-
-| Operation | ML-DSA-44 | ML-DSA-65 | ML-DSA-87 |
-|-----------|----------|----------|----------|
-| keygen | 10,868 ops/s (92 us) | 7,095 ops/s (141 us) | 3,944 ops/s (254 us) |
-| sign | 3,730 ops/s (268 us) | 1,734 ops/s (577 us) | 1,510 ops/s (662 us) |
-| verify | 13,906 ops/s (72 us) | 6,973 ops/s (143 us) | 3,868 ops/s (259 us) |
-
-All operations run in Rust/WASM with constant-time critical paths. Reproduce with `npm run bench`.
-
----
-
-## Usage Examples
-
-### Key Encapsulation (ML-KEM)
-
-```typescript
-import { init, ml_kem768 } from 'fips-crypto';
-
-await init();
-
-// Alice generates a key pair
-const { publicKey, secretKey } = await ml_kem768.keygen();
-
-// Bob encapsulates a shared secret using Alice's public key
-const { ciphertext, sharedSecret } = await ml_kem768.encapsulate(publicKey);
-
-// Alice decapsulates to get the same shared secret
 const recovered = await ml_kem768.decapsulate(secretKey, ciphertext);
 
-// Both parties now share a 32-byte secret for symmetric encryption
-console.log('Match:', Buffer.from(sharedSecret).equals(Buffer.from(recovered)));
+const message = new TextEncoder().encode('hello post-quantum world');
+const { publicKey: verifyKey, secretKey: signKey } = await ml_dsa65.keygen();
+const signature = await ml_dsa65.sign(signKey, message);
+const valid = await ml_dsa65.verify(verifyKey, message, signature);
 ```
 
-### Digital Signatures (ML-DSA)
+### Explicit init
 
-```typescript
-import { init, ml_dsa65 } from 'fips-crypto';
+```ts
+import { init, ml_kem768 } from 'fips-crypto';
 
 await init();
 
-// Generate a signing key pair
-const { publicKey, secretKey } = await ml_dsa65.keygen();
+const { publicKey, secretKey } = await ml_kem768.keygen();
+const { ciphertext, sharedSecret } = await ml_kem768.encapsulate(publicKey);
+const recovered = await ml_kem768.decapsulate(secretKey, ciphertext);
+```
 
-// Sign a message
-const message = new TextEncoder().encode('Transfer $100 to Alice');
-const signature = await ml_dsa65.sign(secretKey, message);
+### SLH-DSA example
 
-// Verify the signature
-const valid = await ml_dsa65.verify(publicKey, message, signature);
-console.log('Valid:', valid); // true
+```ts
+import { slh_dsa_shake_192f } from 'fips-crypto/auto';
 
-// Signing with context (optional, must match during verification)
-const context = new TextEncoder().encode('payment-v1');
-const sig2 = await ml_dsa65.sign(secretKey, message, context);
-await ml_dsa65.verify(publicKey, message, sig2, context); // true
-await ml_dsa65.verify(publicKey, message, sig2);           // false (context mismatch)
+const { publicKey, secretKey } = await slh_dsa_shake_192f.keygen();
+const message = new TextEncoder().encode('sign me');
+const context = new TextEncoder().encode('example-v1');
+
+const signature = await slh_dsa_shake_192f.sign(secretKey, message, context);
+const valid = await slh_dsa_shake_192f.verify(publicKey, message, signature, context);
 ```
 
 ### CommonJS
 
-```javascript
-const { init, ml_kem768, ml_dsa65 } = require('fips-crypto');
+```js
+const { init, ml_kem768 } = require('fips-crypto');
 
 async function main() {
   await init();
-
-  // Key encapsulation
   const { publicKey, secretKey } = await ml_kem768.keygen();
   const { ciphertext, sharedSecret } = await ml_kem768.encapsulate(publicKey);
   const recovered = await ml_kem768.decapsulate(secretKey, ciphertext);
-
-  // Digital signature
-  const { publicKey: pk, secretKey: sk } = await ml_dsa65.keygen();
-  const msg = Buffer.from('Hello');
-  const sig = await ml_dsa65.sign(sk, msg);
-  console.log('Signature valid:', await ml_dsa65.verify(pk, msg, sig));
+  console.log(sharedSecret.length, recovered.length);
 }
 
 main();
 ```
 
-### Error Handling
-
-```typescript
-import { init, ml_kem768, ml_dsa65, FipsCryptoError } from 'fips-crypto';
-
-await init();
-
-try {
-  await ml_kem768.encapsulate(new Uint8Array(100)); // wrong key length
-} catch (error) {
-  if (error instanceof FipsCryptoError) {
-    console.log(error.code);    // 'INVALID_KEY_LENGTH'
-    console.log(error.message); // 'Invalid public key length: expected 1184, got 100'
-  }
-}
-```
-
----
-
-## API Reference
+## API summary
 
 ### Initialization
 
-#### `init(): Promise<void>`
+- `init()` initializes the ML-KEM, ML-DSA, and SLH-DSA WASM modules.
+- `fips-crypto/auto` skips the manual `init()` call and initializes lazily on first use.
 
-Initialize the WASM module. Must be called before using any cryptographic functions. WASM modules must be loaded asynchronously; `init()` is a one-time cost at application startup.
+### ML-KEM API
 
-- Safe to call multiple times (subsequent calls are no-ops)
-- Safe to call concurrently (parallel calls share the same initialization promise)
-- Throws `FipsCryptoError` with code `WASM_NOT_INITIALIZED` if the WASM module fails to load
+Each ML-KEM variant exposes:
 
-```typescript
-import { init } from 'fips-crypto';
-await init();
+- `keygen(seed?)`
+- `encapsulate(publicKey, seed?)`
+- `decapsulate(secretKey, ciphertext)`
+- `params`
+
+Seed sizes:
+
+- `keygen(seed)`: exactly 64 bytes
+- `encapsulate(publicKey, seed)`: exactly 32 bytes
+
+### ML-DSA API
+
+Each ML-DSA variant exposes:
+
+- `keygen(seed?)`
+- `sign(secretKey, message, context?)`
+- `verify(publicKey, message, signature, context?)`
+- `params`
+
+Constraints:
+
+- `keygen(seed)`: exactly 32 bytes
+- `context`: at most 255 bytes
+
+### SLH-DSA API
+
+Each SLH-DSA variant exposes:
+
+- `keygen(seed?)`
+- `sign(secretKey, message, context?)`
+- `verify(publicKey, message, signature, context?)`
+- `params`
+
+Seed sizes depend on the security level:
+
+- 128-bit variants: 48-byte seed
+- 192-bit variants: 72-byte seed
+- 256-bit variants: 96-byte seed
+
+`context` is limited to 255 bytes.
+
+### Errors
+
+Invalid inputs throw `FipsCryptoError` with codes such as:
+
+- `WASM_NOT_INITIALIZED`
+- `INVALID_KEY_LENGTH`
+- `INVALID_CIPHERTEXT_LENGTH`
+- `INVALID_SIGNATURE_LENGTH`
+- `INVALID_SEED_LENGTH`
+- `INVALID_CONTEXT_LENGTH`
+
+## Choosing parameter sets
+
+- Use `ml_kem768` for most KEM use cases.
+- Use `ml_dsa65` for most lattice-based signature use cases.
+- Use `slh_dsa_sha2_192f` or `slh_dsa_shake_192f` when you want hash-based signatures with balanced security/performance.
+- Prefer `f` SLH-DSA variants when signing throughput matters.
+- Prefer `s` SLH-DSA variants when signature size matters more than signing speed.
+
+## Algorithm parameters
+
+### ML-KEM
+
+| Parameter set | Security category | Public key | Secret key | Ciphertext | Shared secret |
+|---------------|-------------------|------------|------------|------------|---------------|
+| ML-KEM-512 | 1 | 800 B | 1632 B | 768 B | 32 B |
+| ML-KEM-768 | 3 | 1184 B | 2400 B | 1088 B | 32 B |
+| ML-KEM-1024 | 5 | 1568 B | 3168 B | 1568 B | 32 B |
+
+### ML-DSA
+
+| Parameter set | Security category | Public key | Secret key | Signature |
+|---------------|-------------------|------------|------------|-----------|
+| ML-DSA-44 | 2 | 1312 B | 2560 B | 2420 B |
+| ML-DSA-65 | 3 | 1952 B | 4032 B | 3309 B |
+| ML-DSA-87 | 5 | 2592 B | 4896 B | 4627 B |
+
+### SLH-DSA
+
+| Parameter set | Security level | Public key | Secret key | Signature |
+|---------------|----------------|------------|------------|-----------|
+| SLH-DSA-SHA2-128s | 128-bit | 32 B | 64 B | 7856 B |
+| SLH-DSA-SHA2-128f | 128-bit | 32 B | 64 B | 17088 B |
+| SLH-DSA-SHA2-192s | 192-bit | 48 B | 96 B | 16224 B |
+| SLH-DSA-SHA2-192f | 192-bit | 48 B | 96 B | 35664 B |
+| SLH-DSA-SHA2-256s | 256-bit | 64 B | 128 B | 29792 B |
+| SLH-DSA-SHA2-256f | 256-bit | 64 B | 128 B | 49856 B |
+| SLH-DSA-SHAKE-128s | 128-bit | 32 B | 64 B | 7856 B |
+| SLH-DSA-SHAKE-128f | 128-bit | 32 B | 64 B | 17088 B |
+| SLH-DSA-SHAKE-192s | 192-bit | 48 B | 96 B | 16224 B |
+| SLH-DSA-SHAKE-192f | 192-bit | 48 B | 96 B | 35664 B |
+| SLH-DSA-SHAKE-256s | 256-bit | 64 B | 128 B | 29792 B |
+| SLH-DSA-SHAKE-256f | 256-bit | 64 B | 128 B | 49856 B |
+
+## Validation and testing
+
+Current validation layers include:
+
+- `717` JavaScript/TypeScript tests
+- `225` Rust tests
+- Coverage thresholds of 99% statements, 99% functions, 97% branches, and 99% lines
+- Packed-artifact smoke tests in CI and the publish workflow
+
+Validation scope by algorithm:
+
+- ML-KEM: known-answer and cross-check style tests across all three parameter sets
+- ML-DSA: cross-implementation vector verification across all three parameter sets, plus negative-path testing
+- SLH-DSA: all 12 parameter sets are implemented and exercised by unit and safeguard tests; current cross-implementation vector coverage is for the 6 fast variants (`128f`, `192f`, `256f` for SHA2 and SHAKE)
+
+If you change cryptographic behavior, extend both the Rust tests and the higher-level JS/TS tests, and add or update independent vectors where possible.
+
+## Security notes
+
+This package is intended for practical application use, but the security claims should be read in the right scope:
+
+- The Rust core is written to keep security-critical operations branch-regular and fixed-shape where the algorithms require it.
+- ML-KEM implements implicit rejection during decapsulation.
+- Secret-bearing Rust structs and selected intermediate buffers are zeroized on drop or before return.
+- JavaScript `Uint8Array` copies are not reliably zeroized; once secret material is copied into JS memory, garbage collection semantics apply.
+- WASM does not provide the same-host side-channel guarantees as a hardened native cryptographic library.
+
+For the full threat model, zeroization boundaries, and side-channel caveats, see [docs/SECURITY-MODEL.md](docs/SECURITY-MODEL.md).
+
+## Supply chain integrity
+
+Every build includes SHA-256 checksums for the published WASM and JS binding artifacts.
+
+```bash
+# Verify an installed package
+npx fips-crypto-verify-integrity
+
+# Verify from a package checkout after building
+npm run verify:integrity
 ```
 
-**Framework integration patterns:**
+For provenance verification:
 
-```typescript
-// Express / Fastify — initialize at server startup
-import { init } from 'fips-crypto';
-await init();
-app.listen(3000);
-
-// Next.js — initialize in instrumentation hook (instrumentation.ts)
-export async function register() {
-  const { init } = await import('fips-crypto');
-  await init();
-}
+```bash
+npm audit signatures
 ```
 
-### ML-KEM (Key Encapsulation)
+Checksums help detect post-publish corruption. Provenance helps confirm the package was built and published by the expected GitHub Actions workflow. See [SECURITY.md](SECURITY.md) and [docs/SECURITY-MODEL.md](docs/SECURITY-MODEL.md) for the threat boundaries of each layer.
 
-#### `ml_kem512 | ml_kem768 | ml_kem1024`
-
-Each ML-KEM variant provides the following methods:
-
-##### `keygen(seed?: Uint8Array): Promise<MlKemKeyPair>`
-
-Generate a key pair.
-
-- `seed` (optional): 64-byte seed for deterministic generation
-- Returns: `{ publicKey: Uint8Array, secretKey: Uint8Array }`
-- Throws: `INVALID_SEED_LENGTH` if seed is provided but not exactly 64 bytes
-
-##### `encapsulate(publicKey: Uint8Array, seed?: Uint8Array): Promise<MlKemEncapsulation>`
-
-Encapsulate a shared secret.
-
-- `publicKey`: Recipient's public key
-- `seed` (optional): 32-byte seed for deterministic encapsulation
-- Returns: `{ ciphertext: Uint8Array, sharedSecret: Uint8Array }`
-- Throws: `INVALID_KEY_LENGTH` if public key has wrong length
-- Throws: `INVALID_SEED_LENGTH` if seed is provided but not exactly 32 bytes
-
-##### `decapsulate(secretKey: Uint8Array, ciphertext: Uint8Array): Promise<Uint8Array>`
-
-Decapsulate to recover the shared secret.
-
-- `secretKey`: Your secret key
-- `ciphertext`: The ciphertext from encapsulation
-- Returns: 32-byte shared secret
-- Throws: `INVALID_KEY_LENGTH` if secret key has wrong length
-- Throws: `INVALID_CIPHERTEXT_LENGTH` if ciphertext has wrong length
-
-##### `params: MlKemParams`
-
-Parameter set information:
-
-```typescript
-{
-  name: 'ML-KEM-768',
-  securityCategory: 3,
-  publicKeyBytes: 1184,
-  secretKeyBytes: 2400,
-  ciphertextBytes: 1088,
-  sharedSecretBytes: 32
-}
-```
-
-### ML-DSA (Digital Signatures)
-
-#### `ml_dsa44 | ml_dsa65 | ml_dsa87`
-
-Each ML-DSA variant provides the following methods:
-
-##### `keygen(seed?: Uint8Array): Promise<MlDsaKeyPair>`
-
-Generate a signing key pair.
-
-- `seed` (optional): 32-byte seed for deterministic generation
-- Returns: `{ publicKey: Uint8Array, secretKey: Uint8Array }`
-- Throws: `INVALID_SEED_LENGTH` if seed is provided but not exactly 32 bytes
-
-##### `sign(secretKey: Uint8Array, message: Uint8Array, context?: Uint8Array): Promise<Uint8Array>`
-
-Sign a message.
-
-- `secretKey`: Your signing key
-- `message`: Message to sign (arbitrary length)
-- `context` (optional): Context string (max 255 bytes, must match during verification)
-- Returns: Signature bytes
-- Throws: `INVALID_KEY_LENGTH` if secret key has wrong length
-
-##### `verify(publicKey: Uint8Array, message: Uint8Array, signature: Uint8Array, context?: Uint8Array): Promise<boolean>`
-
-Verify a signature.
-
-- `publicKey`: Signer's verification key
-- `message`: Original message
-- `signature`: Signature to verify
-- `context` (optional): Context string (must match the context used during signing)
-- Returns: `true` if signature is valid, `false` otherwise
-- Throws: `INVALID_KEY_LENGTH` if public key has wrong length
-- Throws: `INVALID_SIGNATURE_LENGTH` if signature has wrong length
-
-##### `params: MlDsaParams`
-
-Parameter set information:
-
-```typescript
-{
-  name: 'ML-DSA-65',
-  securityCategory: 3,
-  publicKeyBytes: 1952,
-  secretKeyBytes: 4032,
-  signatureBytes: 3309
-}
-```
-
----
-
-## Building from Source
+## Building from source
 
 ### Prerequisites
 
-#### 1. Install Rust
+1. Rust stable
+2. `wasm32-unknown-unknown` target
+3. `wasm-pack`
+4. Node.js 18+
 
-**macOS / Linux:**
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Follow the prompts, then restart your terminal or run:
-source $HOME/.cargo/env
-```
-
-**Windows:**
-
-Download and run [rustup-init.exe](https://rustup.rs/). During installation, you will be prompted to install the Visual Studio C++ Build Tools — follow the instructions to install them. After installation, restart your terminal.
+### Build and test
 
 ```bash
-# Verify installation
-rustc --version
-cargo --version
-```
-
-#### 2. Add WebAssembly Target
-
-```bash
-rustup target add wasm32-unknown-unknown
-```
-
-#### 3. Install wasm-pack
-
-```bash
-# Using cargo
-cargo install wasm-pack
-
-# Or using npm
-npm install -g wasm-pack
-
-# Verify installation
-wasm-pack --version
-```
-
-#### 4. Install Node.js (18+)
-
-Download from [nodejs.org](https://nodejs.org/) or use a version manager like `nvm` (macOS/Linux) or [nvm-windows](https://github.com/coreybutler/nvm-windows) (Windows).
-
-### Build Steps
-
-```bash
-# Clone the repository
-git clone https://github.com/fzheng/fips-crypto.git
-cd fips-crypto
-
-# Install Node.js dependencies
 npm install
-
-# Build everything (WASM + TypeScript)
 npm run build
-
-# Run tests
 npm test
+cargo test
+npm run test:pack
 ```
 
-### Build Scripts
+Useful commands:
 
 | Command | Description |
 |---------|-------------|
-| `npm run build:wasm` | Build WASM module |
-| `npm run build:ts` | Compile TypeScript |
-| `npm run build` | Build everything |
-| `npm test` | Run test suite |
+| `npm run build` | Build Rust/WASM artifacts and TypeScript output |
+| `npm test` | Run the Vitest suite |
 | `npm run test:coverage` | Run tests with coverage |
+| `npm run test:pack` | Smoke-test the packed npm artifact |
+| `cargo test` | Run Rust tests |
 | `npm run bench` | Run benchmarks |
 | `npm run lint` | Run ESLint |
-| `npm run verify:integrity` | Verify WASM checksums |
-| `npm run clean` | Clean build artifacts |
 
----
+More contributor workflow detail lives in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Development
+## Standards
 
-### Running Tests
+- [FIPS 203](https://csrc.nist.gov/pubs/fips/203/final) - ML-KEM
+- [FIPS 204](https://csrc.nist.gov/pubs/fips/204/final) - ML-DSA
+- [FIPS 205](https://csrc.nist.gov/pubs/fips/205/final) - SLH-DSA
 
-```bash
-# Run all JavaScript/TypeScript tests (unit + compliance + property-based)
-npm test
-
-# Run Rust tests
-cargo test
-
-# Run tests with coverage
-npm run test:coverage
-```
-
-### Test Suite
-
-The test suite covers both Rust (`cargo test`) and JavaScript/TypeScript (`npm test`) layers:
-
-- **Unit tests**: Comprehensive parameter validation, input validation, and functional tests for all ML-KEM, ML-DSA, and SLH-DSA variants
-- **Compliance tests**: Cross-implementation vector verification for ML-KEM (FIPS 203 KAT), ML-DSA (FIPS 204), and SLH-DSA (FIPS 205, all 6 fast variants with 6 message scenarios)
-- **Property-based tests**: Randomized testing with [fast-check](https://github.com/dubzzz/fast-check) to verify cryptographic properties (roundtrip correctness, determinism, seed validation) hold for arbitrary inputs
-- **Error path tests**: WASM initialization failure, invalid inputs, and uninitialized module handling
-- **Safeguard tests**: Cross-algorithm isolation, boundary values, API contract regression guards
-
-Coverage thresholds: 99% statements, 99% functions, 97% branches, 99% lines.
-
-### Adding New Features
-
-1. Implement in Rust under `rust/src/`
-2. Add WASM bindings in `rust/src/lib.rs` or module file
-3. Create TypeScript wrapper in `src/`
-4. Add unit tests in `tests/unit/`
-5. Run full test suite
-
----
-
-## Algorithm Parameters
-
-### ML-KEM (FIPS 203)
-
-| Parameter Set | Security | Public Key | Secret Key | Ciphertext | Shared Secret |
-|---------------|----------|------------|------------|------------|---------------|
-| ML-KEM-512    | Cat. 1   | 800 B      | 1,632 B    | 768 B      | 32 B          |
-| ML-KEM-768    | Cat. 3   | 1,184 B    | 2,400 B    | 1,088 B    | 32 B          |
-| ML-KEM-1024   | Cat. 5   | 1,568 B    | 3,168 B    | 1,568 B    | 32 B          |
-
-### ML-DSA (FIPS 204)
-
-| Parameter Set | Security | Public Key | Secret Key | Signature |
-|---------------|----------|------------|------------|-----------|
-| ML-DSA-44     | Cat. 2   | 1,312 B    | 2,560 B    | 2,420 B   |
-| ML-DSA-65     | Cat. 3   | 1,952 B    | 4,032 B    | 3,309 B   |
-| ML-DSA-87     | Cat. 5   | 2,592 B    | 4,896 B    | 4,627 B   |
-
-### SLH-DSA (FIPS 205)
-
-| Parameter Set       | Security | Public Key | Secret Key | Signature |
-|---------------------|----------|------------|------------|-----------|
-| SLH-DSA-SHA2-128f   | 128-bit  | 32 B       | 64 B       | 17,088 B  |
-| SLH-DSA-SHA2-128s   | 128-bit  | 32 B       | 64 B       | 7,856 B   |
-| SLH-DSA-SHA2-192f   | 192-bit  | 48 B       | 96 B       | 35,664 B  |
-| SLH-DSA-SHA2-192s   | 192-bit  | 48 B       | 96 B       | 16,224 B  |
-| SLH-DSA-SHA2-256f   | 256-bit  | 64 B       | 128 B      | 49,856 B  |
-| SLH-DSA-SHA2-256s   | 256-bit  | 64 B       | 128 B      | 29,792 B  |
-
-*Note: "f" variants are faster, "s" variants produce smaller signatures.*
-
----
-
-## Security Considerations
-
-### Implementation Security
-
-- **Implicit Rejection**: ML-KEM implements implicit rejection to prevent chosen-ciphertext attacks
-- **Input Validation**: All key, ciphertext, seed, and context lengths are validated before processing
-- **Memory Zeroization**: All secret key material is securely erased when no longer needed (via Rust `zeroize` crate)
-- **Constant-Time Operations**: Critical operations avoid data-dependent timing and branching
-
-For a detailed threat model, constant-time analysis, and zeroization boundaries, see [docs/SECURITY-MODEL.md](docs/SECURITY-MODEL.md).
-
-### Supply Chain Integrity
-
-Every build generates SHA-256 checksums of the published WASM assets, stored in `dist/pkg/checksums.sha256` and `dist/pkg-node/checksums.sha256`. This allows verification that the published package has not been tampered with.
-
-```bash
-# Verify checksums after install
-npx fips-crypto-verify-integrity
-
-# Or from the package directory itself
-npm run verify:integrity
-
-# Or manually with standard tools
-sha256sum node_modules/fips-crypto/dist/pkg/fips_crypto_wasm_bg.wasm
-# Compare against node_modules/fips-crypto/dist/pkg/checksums.sha256
-```
-
-### Quantum Resistance
-
-These algorithms are designed to resist attacks from quantum computers:
-
-| Algorithm | Mathematical Basis | Quantum Resistance |
-|-----------|-------------------|-------------------|
-| ML-KEM    | Module-LWE problem | Lattice-based |
-| ML-DSA    | Module-LWE problem | Lattice-based |
-| SLH-DSA   | Hash functions | Hash-based (conservative) |
-
-### Recommendations
-
-- Use **ML-KEM-768** for general key encapsulation
-- Use **ML-DSA-65** for general digital signatures
-- Use **SLH-DSA** when you want hash-based security (no lattice assumptions)
-- Consider **hybrid schemes** combining classical and post-quantum algorithms during transition
-
----
-
-## Compliance Disclaimer
-
-This library implements the **algorithm specifications** defined in FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), and FIPS 205 (SLH-DSA). It does **not** constitute a FIPS 140-2 or FIPS 140-3 validated cryptographic module.
-
-- FIPS 203/204/205 define **algorithms** (what computations to perform)
-- FIPS 140-2/140-3 define **module validation** (operational security requirements verified through CMVP)
-- This library has **not** been submitted for CMVP validation
-
-For government or regulated use cases that require FIPS 140 validation, confirm your compliance requirements independently before adopting this library.
-
----
-
-## Standards Compliance
-
-This library implements algorithms standardized by NIST:
-
-- [FIPS 203](https://csrc.nist.gov/pubs/fips/203/final) - ML-KEM (August 2024)
-- [FIPS 204](https://csrc.nist.gov/pubs/fips/204/final) - ML-DSA (August 2024)
-- [FIPS 205](https://csrc.nist.gov/pubs/fips/205/final) - SLH-DSA (August 2024)
-
-### Compliance Verification
-
-**ML-KEM (FIPS 203)**: Verified through Known Answer Tests (KAT) — pre-generated key pairs, ciphertexts, and shared secrets from an independent implementation are included as static test vectors. Our library must successfully decapsulate each ciphertext and recover the identical shared secret. Covers all three parameter sets.
-
-**ML-DSA (FIPS 204)**: Verified through cross-implementation testing — signatures and keys generated by an independent FIPS 204 implementation are included as static test vectors. Our library must verify external signatures and produce signatures that the external implementation can verify. Additionally tested: corrupted signature rejection, context mismatch detection, cross-key failure, and signature non-determinism.
-
-**SLH-DSA (FIPS 205)**: Verified through cross-implementation testing — signatures generated by an independent FIPS 205 implementation are included as static test vectors covering all 6 fast variants (SHA2/SHAKE x 128/192/256) with 6 message scenarios each (short, standard, empty, single-byte, 1KB, all-zeros). Our library must verify all external signatures and reject corrupted signatures and wrong messages. 108 compliance tests total.
-
-**Test coverage**: 711 JavaScript/TypeScript tests + 225 Rust unit tests. Coverage thresholds enforced at 99% statements, 99% functions, 97% branches, 99% lines. Safeguard tests protect against cross-algorithm key mixing, boundary value errors, input type violations, and API contract regressions.
-
-The Rust implementation includes detailed references to specific FIPS algorithm numbers in source code comments.
-
-### Migration Timeline
-
-Per NIST IR 8547, organizations should:
-- Begin transitioning to post-quantum cryptography **now**
-- Deprecate quantum-vulnerable algorithms by **2030** (high-value data)
-- Remove quantum-vulnerable algorithms by **2035**
-
----
-
-## Major Contributors
-
-- **Feng Zheng** - [GitHub](https://github.com/fzheng)
-
-## License
-
-MIT License
-
----
+NIST migration guidance is tracked in [IR 8547](https://csrc.nist.gov/pubs/ir/8547/final).
 
 ## Contributing
 
-Contributions are welcome! Please:
+Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md) if your change touches cryptographic behavior or disclosure-sensitive issues.
 
-1. Fork the repository
-2. Create a feature branch
-3. Ensure linting passes (`npm run lint`)
-4. Ensure all tests pass (`npm test`)
-5. Submit a pull request
+## License
 
-For major changes, please open an issue first to discuss the proposed changes.
+MIT
+

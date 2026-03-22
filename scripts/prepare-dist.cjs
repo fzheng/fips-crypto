@@ -40,4 +40,15 @@ for (const file of ['ml-kem.js', 'ml-dsa.js', 'slh-dsa.js']) {
   );
 }
 
+// Create Node.js-specific ESM build that uses pkg-node instead of pkg (bundler target).
+// The bundler target uses `import * from ".wasm"` which Node.js cannot handle.
+copyFreshDir(path.join(DIST_DIR, 'esm'), path.join(DIST_DIR, 'node-esm'));
+for (const file of ['ml-kem.js', 'ml-dsa.js', 'slh-dsa.js']) {
+  replaceInFile(
+    path.join(DIST_DIR, 'node-esm', file),
+    "../pkg/fips_crypto_wasm.js",
+    "../pkg-node/fips_crypto_wasm.js",
+  );
+}
+
 console.log('Prepared dist/ for publication');

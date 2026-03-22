@@ -1,103 +1,93 @@
 # Contributing to fips-crypto
 
-Thank you for your interest in contributing to fips-crypto! This document provides guidelines for contributing to the project.
+This document describes the development workflow for `fips-crypto`.
 
 ## Development Setup
 
 ### Prerequisites
 
-1. **Rust** (stable toolchain)
-   - macOS/Linux: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
-   - Windows: Download [rustup-init.exe](https://rustup.rs/)
-
-2. **WebAssembly target**: `rustup target add wasm32-unknown-unknown`
-
-3. **wasm-pack**: `cargo install wasm-pack`
-
-4. **Node.js 18+**: Download from [nodejs.org](https://nodejs.org/) or use a version manager
+1. Rust stable
+   macOS/Linux: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+   Windows: install [rustup-init.exe](https://rustup.rs/)
+2. WebAssembly target: `rustup target add wasm32-unknown-unknown`
+3. `wasm-pack`: `cargo install wasm-pack`
+4. Node.js 18+
 
 ### Getting Started
 
 ```bash
-# Fork and clone the repository
 git clone https://github.com/<your-username>/fips-crypto.git
 cd fips-crypto
-
-# Install dependencies
 npm install
-
-# Build WASM + TypeScript
 npm run build
-
-# Run tests
 npm test
 ```
 
-## Available Commands
+## Common Commands
 
 | Command | Description |
 |---------|-------------|
-| `npm run build` | Build WASM module and TypeScript |
-| `npm test` | Run test suite |
-| `npm run test:coverage` | Run tests with coverage report |
+| `npm run build` | Build Rust/WASM artifacts and TypeScript output |
+| `npm test` | Run the Vitest suite |
+| `npm run test:coverage` | Run tests with coverage |
+| `npm run test:pack` | Smoke-test the packed npm artifact |
 | `npm run bench` | Run benchmarks |
 | `npm run lint` | Run ESLint |
-| `npm run verify:integrity` | Verify WASM binary checksums |
-| `cargo test` | Run Rust unit tests |
+| `npm run verify:integrity` | Verify local built artifact checksums |
+| `cargo test` | Run Rust tests |
 
-## Submitting Changes
+## Pull Request Checklist
 
-### Pull Request Requirements
+1. `npm run build`
+2. `npm test`
+3. `npm run test:pack` for packaging-sensitive changes
+4. `cargo test` for Rust changes
+5. `npm run lint`
 
-1. **All tests pass**: `npm test` and `cargo test`
-2. **Lint clean**: `npm run lint`
-3. **Coverage maintained**: Coverage thresholds are enforced (99% statements/functions/lines, 97% branches)
-4. **Clear commit messages**: Describe what changed and why
+## Process
 
-### Process
+1. Fork the repository.
+2. Create a feature branch from `dev`.
+3. Make the change.
+4. Run the relevant checks.
+5. Open a pull request against `dev`.
 
-1. Fork the repository
-2. Create a feature branch from `dev`
-3. Make your changes
-4. Ensure all checks pass
-5. Submit a pull request to `dev`
+For larger changes, open an issue first.
 
-For major changes, please open an issue first to discuss the proposed approach.
+## Cryptographic Changes
 
-### Cryptographic Changes
+Changes to `rust/src/` need extra care:
 
-Changes to cryptographic implementations require extra care:
-
-- Reference the specific FIPS algorithm/section being implemented
-- Include test vector verification against an independent implementation
-- Do not introduce new dependencies without discussion
-- Maintain constant-time behavior in security-critical code paths
-- Ensure `zeroize` is used for all secret key material
+- Reference the relevant FIPS algorithm or section.
+- Preserve constant-time structure in security-critical paths.
+- Zeroize secret material and sensitive intermediate buffers where practical.
+- Add independent-vector or cross-implementation coverage when changing algorithm behavior.
+- Avoid dependency changes unless there is a clear need.
 
 ## Project Structure
 
-```
+```text
 fips-crypto/
-├── rust/src/           # Rust cryptographic implementations
-│   ├── ml_kem/         # FIPS 203 ML-KEM
-│   ├── ml_dsa/         # FIPS 204 ML-DSA
-│   ├── slh_dsa/        # FIPS 205 SLH-DSA
-│   └── primitives/     # Shared primitives (NTT, polynomial, SHA3)
-├── src/                # TypeScript wrappers
-│   ├── index.ts        # Main entry point
-│   ├── auto.ts         # Auto-init entry point (no init() needed)
-│   ├── ml-kem.ts       # ML-KEM wrapper
-│   ├── ml-dsa.ts       # ML-DSA wrapper
-│   ├── slh-dsa.ts      # SLH-DSA wrapper
-│   └── types.ts        # Type definitions
-├── tests/              # Test suite
-│   ├── unit/           # Unit tests
-│   └── vectors/        # Compliance test vectors
-├── benchmarks/         # Performance benchmarks
-├── scripts/            # Build/verification scripts
-└── dist/               # Built output (not in source)
+|-- rust/src/
+|   |-- ml_kem/
+|   |-- ml_dsa/
+|   |-- slh_dsa/
+|   `-- primitives/
+|-- src/
+|   |-- index.ts
+|   |-- auto.ts
+|   |-- ml-kem.ts
+|   |-- ml-dsa.ts
+|   |-- slh-dsa.ts
+|   `-- types.ts
+|-- tests/
+|   |-- unit/
+|   `-- vectors/
+|-- docs/
+|-- scripts/
+`-- dist/
 ```
 
-## Code of Conduct
+## Security
 
-Be respectful, constructive, and focused on making the project better. Security-related discussions should follow responsible disclosure practices outlined in [SECURITY.md](SECURITY.md).
+Security-related reports should follow the process in [SECURITY.md](SECURITY.md).

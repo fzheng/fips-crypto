@@ -12,12 +12,13 @@
 //!    - z: implicit rejection randomness, used to derive a pseudorandom
 //!      shared secret when ciphertext validation fails (CCA security)
 
-use crate::ml_kem::params::MlKemParams;
 use crate::ml_kem::MlKemKeyPair;
+use crate::ml_kem::params::MlKemParams;
 use crate::primitives::polynomial::{Poly, PolyMat, PolyVec};
 use crate::primitives::random::random_bytes;
 use crate::primitives::sha3::{g, h};
 use wasm_bindgen::JsError;
+use zeroize::Zeroize;
 
 /// ML-KEM key generation -- FIPS 203 Algorithm 16 (ML-KEM.KeyGen_internal).
 ///
@@ -42,42 +43,53 @@ pub fn ml_kem_keygen<const K: usize>(
             d_z.copy_from_slice(&s[..64]);
         }
         Some(s) => {
+            d_z.zeroize();
             return Err(JsError::new(&format!(
                 "Seed must be at least 64 bytes, got {}",
                 s.len()
             )));
         }
         None => {
-            random_bytes(&mut d_z).map_err(|_| JsError::new("Failed to generate random bytes"))?;
+            if random_bytes(&mut d_z).is_err() {
+                d_z.zeroize();
+                return Err(JsError::new("Failed to generate random bytes"));
+            }
         }
     }
 
-    // Split into d (32 bytes) and z (32 bytes)
-    let d = &d_z[..32];
-    let z = &d_z[32..64];
+    let result = {
+        // Split into d (32 bytes) and z (32 bytes)
+        let d = &d_z[..32];
+        let z = &d_z[32..64];
 
-    // Generate internal keys using K-PKE.KeyGen
-    let (ek_pke, dk_pke) = k_pke_keygen::<K>(d, params)?;
+        // Generate internal keys using K-PKE.KeyGen
+        k_pke_keygen::<K>(d, params).map(|(ek_pke, mut dk_pke)| {
+            // Compute H(ek)
+            let h_ek = h(&ek_pke);
 
-    // Compute H(ek)
-    let h_ek = h(&ek_pke);
+            // Construct the encapsulation key (just the PKE public key)
+            let ek = ek_pke.clone();
 
-    // Construct the encapsulation key (just the PKE public key)
-    let ek = ek_pke.clone();
+            // Construct the decapsulation key: dk_pke || ek || H(ek) || z
+            // This structure allows decapsulation to:
+            // - Decrypt with dk_pke
+            // - Re-encrypt with ek for ciphertext comparison
+            // - Use H(ek) in the G hash derivation
+            // - Use z for implicit rejection
+            let mut dk = Vec::with_capacity(params.dk_bytes);
+            dk.extend_from_slice(&dk_pke);
+            dk.extend_from_slice(&ek_pke);
+            dk.extend_from_slice(&h_ek);
+            dk.extend_from_slice(z);
 
-    // Construct the decapsulation key: dk_pke || ek || H(ek) || z
-    // This structure allows decapsulation to:
-    // - Decrypt with dk_pke
-    // - Re-encrypt with ek for ciphertext comparison
-    // - Use H(ek) in the G hash derivation
-    // - Use z for implicit rejection
-    let mut dk = Vec::with_capacity(params.dk_bytes);
-    dk.extend_from_slice(&dk_pke);
-    dk.extend_from_slice(&ek_pke);
-    dk.extend_from_slice(&h_ek);
-    dk.extend_from_slice(z);
+            dk_pke.zeroize();
 
-    Ok(MlKemKeyPair { ek, dk })
+            MlKemKeyPair { ek, dk }
+        })
+    };
+
+    d_z.zeroize();
+    result
 }
 
 /// K-PKE Key Generation -- FIPS 203 Algorithm 13 (K-PKE.KeyGen).
@@ -100,7 +112,7 @@ fn k_pke_keygen<const K: usize>(
     params: &MlKemParams,
 ) -> Result<(Vec<u8>, Vec<u8>), JsError> {
     // (rho, sigma) <- G(d)
-    let g_output = g(d);
+    let mut g_output = g(d);
     let rho = &g_output[..32];
     let sigma = &g_output[32..64];
 
@@ -141,13 +153,17 @@ fn k_pke_keygen<const K: usize>(
     // Encode secret key: s (in NTT form)
     let dk_pke = s_hat.to_bytes();
 
+    g_output.zeroize();
+
     Ok((ek_pke, dk_pke))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ml_kem::params::{ML_KEM_512, ML_KEM_768, ML_KEM_1024, MLKEM512_K, MLKEM768_K, MLKEM1024_K};
+    use crate::ml_kem::params::{
+        ML_KEM_512, ML_KEM_768, ML_KEM_1024, MLKEM512_K, MLKEM768_K, MLKEM1024_K,
+    };
     use crate::primitives::sha3::h;
 
     #[test]

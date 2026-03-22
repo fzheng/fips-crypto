@@ -98,6 +98,9 @@ Every build generates SHA-256 checksums of the WASM binary and JS binding files 
 ### Verification
 
 ```bash
+npx fips-crypto-verify-integrity
+
+# Or from a local checkout after building
 npm run verify:integrity
 ```
 
