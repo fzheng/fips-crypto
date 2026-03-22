@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-03-20
+
+### Added
+
+**SLH-DSA (FIPS 205) — full implementation**
+- All 12 parameter sets: SHA2/SHAKE x 128/192/256 x fast/small
+- Rust implementation (~6,000 lines): ADRS, tweakable hash (SHA-256/SHA-512/SHAKE-256), WOTS+, XMSS, FORS, hypertree, keygen/sign/verify
+- 36 WASM bindings (12 param sets x 3 operations) via macro
+- TypeScript wrappers with seed/key/signature/context validation
+- Auto-init support (`fips-crypto/auto`)
+- SLH-DSA compliance tests: 108 tests across all 6 fast variants, verified against an independent FIPS 205 implementation with 6 message scenarios each
+- SLH-DSA benchmarks for fast variants
+
+**Security hardening**
+- ML-KEM encapsulation shared secret now uses `ZeroizeOnDrop` (previously manual only)
+- ML-DSA keygen intermediate buffers (xi, rho', K) explicitly zeroized before return
+- ML-DSA signing intermediate buffers (k_bytes, rnd, rho'') explicitly zeroized before return
+- SECURITY-MODEL.md: added checksum-vs-provenance threat boundary documentation
+- SECURITY.md: added npm provenance verification instructions (`npm audit signatures`)
+
+**Documentation & trust**
+- FIPS 205 badge in README
+- "Why fips-crypto?" comparison table updated with SLH-DSA coverage
+- Runtime compatibility table (Node.js, browsers, Bun/Deno status)
+- Auto-init promoted as default in README Quick Start
+- Package description updated to include FIPS 205
+- Restored `slh-dsa`, `fips-205`, `sphincs` keywords in package.json
+- Publish workflow annotated for future OIDC trusted publishing migration
+
+### Changed
+- Package description now includes FIPS 205 (SLH-DSA)
+- README Quick Start now leads with auto-init entry point
+- SLH-DSA address structure fixed to match NIST reference implementation byte layout
+- SHA2 T_l function: uses SHA-256 for single-block (F), SHA-512 for multi-block (H/T_l) per FIPS 205 Section 10
+- SHA2 PRF function: uses SHA-256 for all security levels per FIPS 205 Section 10
+
+### Fixed
+- SLH-DSA ADRS byte layout: corrected from 4-byte word fields to match NIST reference offsets (layer@3, tree@8, type@19, kp@20, chain@27, index@28)
+- SLH-DSA `set_type` no longer zeros subsequent fields (matching NIST reference behavior)
+- WOTS+ checksum decomposition: fixed digit extraction order (was MSB-last, now correctly MSB-first via bit extraction from big-endian bytes)
+- SHA2 T_l: removed incorrect MGF1 usage for multi-block inputs (simple variant uses plain hash)
+- SHA2 PRF: changed from HMAC to SHA-256 with padding (matching NIST reference)
+- Corrected `m` (digest length) for SLH-DSA-SHA2/SHAKE-128s (14→30), 192s (33→39), 192f (34→42)
+
 ## [0.5.0] - 2026-03-20
 
 ### Added
@@ -111,6 +155,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TypeScript/JavaScript wrappers with ESM and CJS support
 - SLH-DSA parameter set definitions (stubs)
 
+[0.6.0]: https://github.com/fzheng/fips-crypto/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/fzheng/fips-crypto/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/fzheng/fips-crypto/compare/0.3.0...v0.4.0
 [0.3.0]: https://github.com/fzheng/fips-crypto/compare/0.2.2...0.3.0

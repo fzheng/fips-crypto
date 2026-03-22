@@ -36,6 +36,14 @@ All security-critical computations in the Rust core avoid data-dependent branchi
 - **Rejection sampling**: ExpandA, ExpandS, ExpandMask, SampleInBall use deterministic SHAKE-based expansion (`rust/src/ml_dsa/sampling.rs`)
 - **Signing loop**: The rejection loop in signing does reveal the number of iterations (this is inherent to ML-DSA's design and specified in FIPS 204)
 
+### SLH-DSA (FIPS 205)
+
+- **Hash-based design**: SLH-DSA is based entirely on hash functions (SHA-256/SHA-512/SHAKE-256), with no algebraic operations. Timing depends only on the parameter set, not on secret data.
+- **WOTS+ chain computation**: Fixed number of hash iterations per chain, determined by the message digest (not by secret keys)
+- **FORS tree construction**: Fixed tree height and width, no secret-dependent branching
+- **Hypertree traversal**: Fixed number of layers and per-layer tree height
+- **PRF and tweakable hash**: All hash calls use the same input size per address type, preventing length-based timing leaks
+
 ### Limitations
 
 WASM constant-time guarantees depend on the engine:
@@ -53,8 +61,11 @@ These are inherent limitations of running cryptography in a managed runtime. For
 All Rust structs containing secret key material derive `Zeroize` and `ZeroizeOnDrop` from the [zeroize](https://crates.io/crates/zeroize) crate:
 
 - **ML-KEM key pairs**: Secret key bytes are overwritten with zeros when the Rust struct is dropped
+- **ML-KEM encapsulation results**: Shared secret is zeroized on drop
 - **ML-DSA key pairs**: Same zeroize-on-drop behavior
-- **Intermediate computation buffers**: Polynomial vectors containing secret data are zeroized after use
+- **ML-DSA intermediate buffers**: Seed material (xi, rho', K) and signing intermediates (k_bytes, rnd, rho'') are explicitly zeroized before function return
+- **SLH-DSA key pairs**: Same zeroize-on-drop behavior
+- **SLH-DSA keygen intermediates**: Key material buffer is zeroized after extracting components
 
 ### What is NOT zeroized
 

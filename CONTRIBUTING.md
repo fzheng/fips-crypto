@@ -81,11 +81,14 @@ fips-crypto/
 ├── rust/src/           # Rust cryptographic implementations
 │   ├── ml_kem/         # FIPS 203 ML-KEM
 │   ├── ml_dsa/         # FIPS 204 ML-DSA
-│   └── primitives/     # Shared primitives (NTT, polynomial)
+│   ├── slh_dsa/        # FIPS 205 SLH-DSA
+│   └── primitives/     # Shared primitives (NTT, polynomial, SHA3)
 ├── src/                # TypeScript wrappers
 │   ├── index.ts        # Main entry point
+│   ├── auto.ts         # Auto-init entry point (no init() needed)
 │   ├── ml-kem.ts       # ML-KEM wrapper
 │   ├── ml-dsa.ts       # ML-DSA wrapper
+│   ├── slh-dsa.ts      # SLH-DSA wrapper
 │   └── types.ts        # Type definitions
 ├── tests/              # Test suite
 │   ├── unit/           # Unit tests

@@ -363,7 +363,7 @@ describe('Safeguard Tests', () => {
   // ==========================================================================
   // SLH-DSA All 12 Variants Systematic Error Code Check
   // ==========================================================================
-  describe('SLH-DSA all variants throw NOT_IMPLEMENTED with correct code', () => {
+  describe('SLH-DSA all 12 variants have correct params', () => {
     const allSlhDsa = [
       slh_dsa_sha2_128s, slh_dsa_sha2_128f,
       slh_dsa_sha2_192s, slh_dsa_sha2_192f,
@@ -374,16 +374,34 @@ describe('Safeguard Tests', () => {
     ];
 
     for (const impl of allSlhDsa) {
-      it(`${impl.params.name} keygen throws NOT_IMPLEMENTED`, async () => {
-        try {
-          await impl.keygen();
-          expect.unreachable();
-        } catch (e) {
-          expect(e).toBeInstanceOf(FipsCryptoError);
-          expect((e as FipsCryptoError).code).toBe(ErrorCodes.NOT_IMPLEMENTED);
-        }
+      it(`${impl.params.name} has valid params`, () => {
+        expect(impl.params.name).toBeTruthy();
+        expect(impl.params.publicKeyBytes).toBeGreaterThan(0);
+        expect(impl.params.secretKeyBytes).toBeGreaterThan(0);
+        expect(impl.params.signatureBytes).toBeGreaterThan(0);
+        expect(['SHA2', 'SHAKE']).toContain(impl.params.hash);
+        expect([128, 192, 256]).toContain(impl.params.securityLevel);
+        expect(['f', 's']).toContain(impl.params.variant);
       });
     }
+  });
+
+  describe('SLH-DSA SHAKE-128f sign/verify roundtrip', () => {
+    it('keygen + sign + verify works', async () => {
+      const { publicKey, secretKey } = await slh_dsa_shake_128f.keygen();
+      expect(publicKey.length).toBe(slh_dsa_shake_128f.params.publicKeyBytes);
+      expect(secretKey.length).toBe(slh_dsa_shake_128f.params.secretKeyBytes);
+
+      const msg = new TextEncoder().encode('safeguard SLH-DSA test');
+      const sig = await slh_dsa_shake_128f.sign(secretKey, msg);
+      expect(sig.length).toBe(slh_dsa_shake_128f.params.signatureBytes);
+
+      const valid = await slh_dsa_shake_128f.verify(publicKey, msg, sig);
+      expect(valid).toBe(true);
+
+      const invalid = await slh_dsa_shake_128f.verify(publicKey, new TextEncoder().encode('wrong'), sig);
+      expect(invalid).toBe(false);
+    });
   });
 
   // ==========================================================================

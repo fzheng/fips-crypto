@@ -1,7 +1,7 @@
 {
   "name": "fips-crypto",
   "version": "0.6.0",
-  "description": "Post-quantum cryptography library implementing FIPS 203 (ML-KEM) and FIPS 204 (ML-DSA) with Rust/WASM. Constant-time operations, memory zeroization, supply chain checksums.",
+  "description": "Post-quantum cryptography library implementing FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), and FIPS 205 (SLH-DSA) with Rust/WASM. Constant-time operations, memory zeroization, supply chain checksums.",
   "type": "module",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -59,10 +59,13 @@
     "pqc",
     "ml-kem",
     "ml-dsa",
+    "slh-dsa",
     "fips-203",
     "fips-204",
+    "fips-205",
     "kyber",
     "dilithium",
+    "sphincs",
     "wasm",
     "webassembly"
   ],
