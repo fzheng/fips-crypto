@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /**
  * Verify integrity of WASM and JS files against stored checksums.
  * Run: npm run verify:integrity
@@ -7,11 +9,24 @@ const fs = require('fs');
 const crypto = require('crypto');
 const path = require('path');
 
-// Check both pkg/ (source) and dist/pkg/ (distributed)
-const dirs = [
+const candidateDirs = [
   { name: 'pkg', path: path.join(__dirname, '..', 'pkg') },
+  { name: 'pkg-node', path: path.join(__dirname, '..', 'pkg-node') },
   { name: 'dist/pkg', path: path.join(__dirname, '..', 'dist', 'pkg') },
+  { name: 'dist/pkg-node', path: path.join(__dirname, '..', 'dist', 'pkg-node') },
+  { name: 'dist/pkg', path: path.join(__dirname, 'pkg') },
+  { name: 'dist/pkg-node', path: path.join(__dirname, 'pkg-node') },
 ];
+
+const seen = new Set();
+const dirs = candidateDirs.filter((dir) => {
+  const resolved = path.resolve(dir.path);
+  if (seen.has(resolved)) {
+    return false;
+  }
+  seen.add(resolved);
+  return true;
+});
 
 let hasErrors = false;
 
@@ -48,7 +63,7 @@ for (const dir of dirs) {
 }
 
 if (hasErrors) {
-  console.log('\nINTEGRITY CHECK FAILED — files may have been tampered with');
+  console.log('\nINTEGRITY CHECK FAILED - files may have been tampered with');
   process.exit(1);
 } else {
   console.log('\nAll checksums verified OK');

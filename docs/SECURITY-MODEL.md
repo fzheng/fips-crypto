@@ -36,6 +36,14 @@ All security-critical computations in the Rust core avoid data-dependent branchi
 - **Rejection sampling**: ExpandA, ExpandS, ExpandMask, SampleInBall use deterministic SHAKE-based expansion (`rust/src/ml_dsa/sampling.rs`)
 - **Signing loop**: The rejection loop in signing does reveal the number of iterations (this is inherent to ML-DSA's design and specified in FIPS 204)
 
+### SLH-DSA (FIPS 205)
+
+- **Hash-based design**: SLH-DSA is based entirely on hash functions (SHA-256/SHA-512/SHAKE-256), with no algebraic operations. Timing depends only on the parameter set, not on secret data.
+- **WOTS+ chain computation**: Fixed number of hash iterations per chain, determined by the message digest (not by secret keys)
+- **FORS tree construction**: Fixed tree height and width, no secret-dependent branching
+- **Hypertree traversal**: Fixed number of layers and per-layer tree height
+- **PRF and tweakable hash**: All hash calls use the same input size per address type, preventing length-based timing leaks
+
 ### Limitations
 
 WASM constant-time guarantees depend on the engine:
@@ -53,8 +61,11 @@ These are inherent limitations of running cryptography in a managed runtime. For
 All Rust structs containing secret key material derive `Zeroize` and `ZeroizeOnDrop` from the [zeroize](https://crates.io/crates/zeroize) crate:
 
 - **ML-KEM key pairs**: Secret key bytes are overwritten with zeros when the Rust struct is dropped
+- **ML-KEM encapsulation results**: Shared secret is zeroized on drop
 - **ML-DSA key pairs**: Same zeroize-on-drop behavior
-- **Intermediate computation buffers**: Polynomial vectors containing secret data are zeroized after use
+- **ML-DSA intermediate buffers**: Seed material (xi, rho', K) and signing intermediates (k_bytes, rnd, rho'') are explicitly zeroized before function return
+- **SLH-DSA key pairs**: Same zeroize-on-drop behavior
+- **SLH-DSA keygen intermediates**: Key material buffer is zeroized after extracting components
 
 ### What is NOT zeroized
 
@@ -87,6 +98,9 @@ Every build generates SHA-256 checksums of the WASM binary and JS binding files 
 ### Verification
 
 ```bash
+npx fips-crypto-verify-integrity
+
+# Or from a local checkout after building
 npm run verify:integrity
 ```
 
@@ -95,3 +109,24 @@ This compares the actual file hashes against the stored checksums. Any mismatch 
 ### npm Provenance
 
 Releases published via GitHub Actions use npm's `--provenance` flag, which creates a [Sigstore](https://www.sigstore.dev/) attestation linking the published package to the specific GitHub Actions workflow run, commit SHA, and repository. This is visible as a "Provenance" badge on the npm package page.
+
+### Checksums vs. Provenance: Threat Boundaries
+
+**Checksums** (`checksums.sha256`) protect against **post-publish corruption**: if a CDN or mirror serves modified files, the checksums will mismatch. However, checksums are included inside the package itself — an attacker who compromises the publish step can regenerate checksums to match their tampered binaries. Checksums alone **cannot** detect a compromised build pipeline or stolen npm token.
+
+**npm Provenance** (Sigstore attestation) protects against **build-origin spoofing**: the attestation cryptographically links the published tarball to a specific GitHub Actions workflow run, commit SHA, and repository. Even if an attacker steals the npm publish token, they cannot forge a valid Sigstore attestation from the legitimate GitHub Actions environment.
+
+To verify provenance:
+
+```bash
+npm audit signatures
+```
+
+**Defense in depth**: Use both. Checksums catch accidental corruption and CDN issues. Provenance catches deliberate supply chain attacks on the publish step. Neither protects against a compromised source repository (e.g., a malicious commit merged to `main`). For that, rely on code review and branch protection rules.
+
+| Threat | Checksums | Provenance |
+|--------|-----------|------------|
+| CDN/mirror corruption | Detects | No |
+| Stolen npm token | No | Detects |
+| Compromised CI environment | No | No |
+| Malicious source commit | No | No |

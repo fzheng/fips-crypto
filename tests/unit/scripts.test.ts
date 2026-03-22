@@ -25,11 +25,20 @@ describe('scripts/generate-checksums.cjs', () => {
     expect(checksums).toHaveProperty('fips_crypto_wasm.js');
   });
 
+  it('generates checksums.sha256 in pkg-node/', () => {
+    const checksumPath = join(ROOT, 'pkg-node', 'checksums.sha256');
+    expect(existsSync(checksumPath)).toBe(true);
+
+    const checksums = JSON.parse(readFileSync(checksumPath, 'utf8'));
+    expect(checksums).toHaveProperty('fips_crypto_wasm_bg.wasm');
+    expect(checksums).toHaveProperty('fips_crypto_wasm.js');
+  });
+
   it('checksums are valid SHA-256 hex strings (64 chars)', () => {
     const checksumPath = join(ROOT, 'pkg', 'checksums.sha256');
     const checksums = JSON.parse(readFileSync(checksumPath, 'utf8'));
 
-    for (const [file, hash] of Object.entries(checksums)) {
+    for (const [, hash] of Object.entries(checksums)) {
       expect(typeof hash).toBe('string');
       expect(hash).toMatch(/^[a-f0-9]{64}$/);
     }

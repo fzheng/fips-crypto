@@ -16,7 +16,7 @@
  * - `ml_dsa65` - Security Category 3 **Recommended**
  * - `ml_dsa87` - Security Category 5
  *
- * ### FIPS 205: SLH-DSA (Hash-Based Signatures) - Coming Soon
+ * ### FIPS 205: SLH-DSA (Hash-Based Signatures)
  * - 12 parameter sets with SHA2/SHAKE and fast/small variants
  *
  * ## Quick Start
@@ -95,9 +95,10 @@ export { ml_dsa44, ml_dsa65, ml_dsa87, initMlDsa } from './ml-dsa.js';
  * SHA2 variants use SHA-256 family, SHAKE variants use SHAKE256.
  * 'f' suffix = fast signing, 's' suffix = small signatures.
  *
- * @remarks These algorithms are not yet implemented.
+ * - `initSlhDsa()` - Initialize WASM module
  */
 export {
+  initSlhDsa,
   // SHA2 variants
   slh_dsa_sha2_128s,
   slh_dsa_sha2_128f,
@@ -184,8 +185,8 @@ export { FipsCryptoError, ErrorCodes } from './types.js';
 export async function init(): Promise<void> {
   const { initMlKem } = await import('./ml-kem.js');
   const { initMlDsa } = await import('./ml-dsa.js');
-  await Promise.all([initMlKem(), initMlDsa()]);
-  // When SLH-DSA is implemented, initialize it here too
+  const { initSlhDsa } = await import('./slh-dsa.js');
+  await Promise.all([initMlKem(), initMlDsa(), initSlhDsa()]);
 }
 
 // =============================================================================
@@ -203,5 +204,5 @@ export async function init(): Promise<void> {
  * console.log(`Using fips-crypto v${VERSION}`);
  * ```
  */
-export const VERSION = '0.5.0';
+export const VERSION = '0.6.0';
 

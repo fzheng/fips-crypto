@@ -173,3 +173,4 @@ benchmarks/results/*.json
 .turbo/
 .vercel/
 .netlify/
+docs/REPO-FINDINGS-2026-03-22.md

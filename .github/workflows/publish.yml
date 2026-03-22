@@ -50,6 +50,12 @@ jobs:
       - name: Verify integrity
         run: npm run verify:integrity
 
+      - name: Smoke test packed artifact
+        run: npm run test:pack
+
+      # TODO: Migrate to npm OIDC trusted publishing to eliminate NPM_TOKEN secret.
+      # Configure at npmjs.com: Settings > Publishing access > Trusted publishing.
+      # Once configured, remove the NODE_AUTH_TOKEN env var below.
       - name: Publish with provenance
         run: npm publish --provenance --access public
         env:

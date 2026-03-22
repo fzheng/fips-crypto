@@ -1,33 +1,56 @@
 {
   "name": "fips-crypto",
-  "version": "0.5.0",
-  "description": "Post-quantum cryptography library implementing FIPS 203 (ML-KEM) and FIPS 204 (ML-DSA) with Rust/WASM. Constant-time operations, memory zeroization, supply chain checksums.",
+  "version": "0.6.0",
+  "description": "Post-quantum cryptography library implementing FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), and FIPS 205 (SLH-DSA) with Rust/WASM, typed APIs, integrity checks, and Rust-side secret zeroization.",
   "type": "module",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/types/index.d.ts",
+  "bin": {
+    "fips-crypto-verify-integrity": "./dist/verify-integrity.cjs"
+  },
   "exports": {
     ".": {
+      "node": {
+        "import": "./dist/node-esm/index.js",
+        "require": "./dist/cjs/index.js"
+      },
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js",
       "types": "./dist/types/index.d.ts"
     },
     "./ml-kem": {
+      "node": {
+        "import": "./dist/node-esm/ml-kem.js",
+        "require": "./dist/cjs/ml-kem.js"
+      },
       "import": "./dist/esm/ml-kem.js",
       "require": "./dist/cjs/ml-kem.js",
       "types": "./dist/types/ml-kem.d.ts"
     },
     "./ml-dsa": {
+      "node": {
+        "import": "./dist/node-esm/ml-dsa.js",
+        "require": "./dist/cjs/ml-dsa.js"
+      },
       "import": "./dist/esm/ml-dsa.js",
       "require": "./dist/cjs/ml-dsa.js",
       "types": "./dist/types/ml-dsa.d.ts"
     },
     "./slh-dsa": {
+      "node": {
+        "import": "./dist/node-esm/slh-dsa.js",
+        "require": "./dist/cjs/slh-dsa.js"
+      },
       "import": "./dist/esm/slh-dsa.js",
       "require": "./dist/cjs/slh-dsa.js",
       "types": "./dist/types/slh-dsa.d.ts"
     },
     "./auto": {
+      "node": {
+        "import": "./dist/node-esm/auto.js",
+        "require": "./dist/cjs/auto.js"
+      },
       "import": "./dist/esm/auto.js",
       "require": "./dist/cjs/auto.js",
       "types": "./dist/types/auto.d.ts"
@@ -38,10 +61,11 @@
   ],
   "scripts": {
     "build:wasm": "wasm-pack build rust --target bundler --release --out-dir ../pkg && wasm-pack build rust --target nodejs --release --out-dir ../pkg-node && node scripts/patch-wasm.cjs && node scripts/generate-checksums.cjs",
-    "build:ts": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && shx cp -r pkg dist/pkg && shx rm -f dist/pkg/.gitignore",
+    "build:ts": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node scripts/prepare-dist.cjs",
     "build": "npm run build:wasm && npm run build:ts",
-    "verify:integrity": "node scripts/verify-integrity.cjs",
+    "verify:integrity": "node dist/verify-integrity.cjs",
     "test": "vitest run",
+    "test:pack": "node scripts/smoke-pack.cjs",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:vectors": "vitest run tests/vectors/",
@@ -63,6 +87,9 @@
     "fips-203",
     "fips-204",
     "fips-205",
+    "typescript",
+    "nodejs",
+    "browser",
     "kyber",
     "dilithium",
     "sphincs",

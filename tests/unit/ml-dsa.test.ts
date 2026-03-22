@@ -11,7 +11,6 @@ import {
   ml_dsa65,
   ml_dsa87,
   initMlDsa,
-  FipsCryptoError,
 } from '../../src/index.js';
 import type { MlDsaAlgorithm } from '../../src/types.js';
 
