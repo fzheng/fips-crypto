@@ -237,7 +237,7 @@ Invalid inputs throw `FipsCryptoError` with codes such as:
 
 Current validation layers include:
 
-- `717` JavaScript/TypeScript tests
+- `718` JavaScript/TypeScript tests
 - `225` Rust tests
 - Coverage thresholds of 99% statements, 99% functions, 97% branches, and 99% lines
 - Packed-artifact smoke tests in CI and the publish workflow

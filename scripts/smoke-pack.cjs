@@ -71,12 +71,24 @@ try {
   }
 
   const esmOutput = runNode(`
-    const { pathToFileURL } = require('url');
-    const path = require('path');
-
     (async () => {
-      const mod = await import(pathToFileURL(path.join(process.cwd(), 'node_modules', 'fips-crypto', 'dist', 'esm', 'index.js')).href);
+      const mod = await import('fips-crypto');
       await mod.init();
+      const { publicKey } = await mod.ml_kem512.keygen(new Uint8Array(64));
+      console.log(publicKey.length);
+    })().catch((error) => {
+      console.error(error);
+      process.exit(1);
+    });
+  `, projectDir);
+
+  if (esmOutput.trim() !== '800') {
+    throw new Error(`Unexpected ESM smoke result: ${esmOutput.trim()}`);
+  }
+
+  const autoOutput = runNode(`
+    (async () => {
+      const mod = await import('fips-crypto/auto');
       const { publicKey } = await mod.slh_dsa_sha2_192s.keygen(new Uint8Array(72));
       console.log(publicKey.length);
     })().catch((error) => {
@@ -85,13 +97,28 @@ try {
     });
   `, projectDir);
 
-  if (esmOutput.trim() !== '48') {
-    throw new Error(`Unexpected ESM smoke result: ${esmOutput.trim()}`);
+  if (autoOutput.trim() !== '48') {
+    throw new Error(`Unexpected auto-init smoke result: ${autoOutput.trim()}`);
+  }
+
+  const installedPkg = JSON.parse(
+    fs.readFileSync(path.join(projectDir, 'node_modules', 'fips-crypto', 'package.json'), 'utf8'),
+  );
+  const verifyBinRelative = installedPkg.bin?.['fips-crypto-verify-integrity'];
+  if (verifyBinRelative !== './dist/verify-integrity.cjs') {
+    throw new Error(`Unexpected bin target: ${String(verifyBinRelative)}`);
+  }
+
+  const binWrapper = process.platform === 'win32'
+    ? path.join(projectDir, 'node_modules', '.bin', 'fips-crypto-verify-integrity.cmd')
+    : path.join(projectDir, 'node_modules', '.bin', 'fips-crypto-verify-integrity');
+  if (!fs.existsSync(binWrapper)) {
+    throw new Error(`Missing installed bin wrapper: ${binWrapper}`);
   }
 
   const verifyOutput = run(
     NODE_BIN,
-    [path.join('node_modules', 'fips-crypto', 'dist', 'verify-integrity.cjs')],
+    [path.join(projectDir, 'node_modules', 'fips-crypto', verifyBinRelative.slice(2))],
     projectDir,
   );
 

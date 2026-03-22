@@ -5,7 +5,7 @@
  * by calling initMlKem() twice while the first is still in flight.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, vi } from 'vitest';
 
 // Mock the WASM module with a delayed import to ensure the concurrent path is hit
 let resolveWasm: (value: unknown) => void;

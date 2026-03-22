@@ -117,6 +117,13 @@ describe('fips-crypto module', () => {
     });
   });
 
+  describe('ML-DSA init export', () => {
+    it('exports initMlDsa', () => {
+      expect(initMlDsa).toBeDefined();
+      expect(typeof initMlDsa).toBe('function');
+    });
+  });
+
   describe('SLH-DSA init export', () => {
     it('exports initSlhDsa', () => {
       expect(initSlhDsa).toBeDefined();

@@ -24,7 +24,6 @@ import {
   slh_dsa_shake_192f,
   slh_dsa_shake_256s,
   slh_dsa_shake_256f,
-  FipsCryptoError,
 } from 'fips-crypto';
 import type { SlhDsaAlgorithm } from 'fips-crypto';
 

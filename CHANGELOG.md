@@ -7,22 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- Repaired published CommonJS loading by routing CJS wrappers to the Node-oriented WASM package.
-- Rebuilt `dist/pkg` and `dist/pkg-node` from fresh inputs so stale WASM artifacts no longer leak into the packed package.
-- Published the integrity verifier with the npm artifact and exposed it as `fips-crypto-verify-integrity`.
-- Added packed-artifact smoke coverage for local validation, CI, and the publish workflow.
-- Made the packed-artifact smoke script work on Windows instead of assuming POSIX npm process lookup.
-- Explicitly zeroized additional ML-KEM seed, derivation, and rejection buffers in the Rust core.
-
-### Changed
-
-- README, SECURITY, and contributor docs were updated to reflect the actual publish shape and verification flow.
-- README now documents SLH-DSA usage, validation scope, and the FIPS 140 disclaimer more clearly.
-- Package metadata now uses more precise security wording and broader npm discovery keywords.
-
-## [0.6.0] - 2026-03-20
+## [0.6.0] - 2026-03-22
 
 ### Added
 
@@ -55,12 +40,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Package description now includes FIPS 205 (SLH-DSA)
 - README quick start now leads with the auto-init entrypoint
+- README, SECURITY, and contributor docs were updated to reflect the actual publish shape and verification flow
+- README now documents SLH-DSA usage, validation scope, and the FIPS 140 disclaimer more clearly
+- Package metadata now uses more precise security wording and broader npm discovery keywords
 - SLH-DSA address structure fixed to match the NIST reference implementation byte layout
 - SHA2 `T_l` uses SHA-256 for single-block `F`, SHA-512 for multi-block `H/T_l`, per FIPS 205 Section 10
 - SHA2 `PRF` uses SHA-256 for all security levels, per FIPS 205 Section 10
 
 ### Fixed
 
+- Repaired published CommonJS loading by routing CJS wrappers to the Node-oriented WASM package
+- Rebuilt `dist/pkg` and `dist/pkg-node` from fresh inputs so stale WASM artifacts no longer leak into the packed package
+- Published the integrity verifier with the npm artifact and exposed it as `fips-crypto-verify-integrity`
+- Added packed-artifact smoke coverage for local validation, CI, and the publish workflow
+- Made the packed-artifact smoke script work on Windows instead of assuming POSIX npm process lookup
+- Explicitly zeroized additional ML-KEM seed, derivation, and rejection buffers in the Rust core
 - SLH-DSA ADRS byte layout corrected to match NIST reference offsets
 - SLH-DSA `set_type` no longer zeroes subsequent fields
 - WOTS+ checksum decomposition digit extraction order corrected to MSB-first

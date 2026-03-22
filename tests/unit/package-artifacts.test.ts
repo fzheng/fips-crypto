@@ -30,6 +30,14 @@ describe('published artifact smoke checks', () => {
     expect(nodeWasmPkg.version).toBe(rootPkg.version);
   });
 
+  it('routes Node import exports to dist/node-esm and publishes the verifier bin', () => {
+    const rootPkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+
+    expect(rootPkg.exports['.'].node.import).toBe('./dist/node-esm/index.js');
+    expect(rootPkg.exports['./auto'].node.import).toBe('./dist/node-esm/auto.js');
+    expect(rootPkg.bin['fips-crypto-verify-integrity']).toBe('./dist/verify-integrity.cjs');
+  });
+
   it('loads the CommonJS build and initializes ML-KEM through pkg-node', () => {
     const output = runNode(`
       (async () => {

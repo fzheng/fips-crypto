@@ -38,7 +38,7 @@ describe('scripts/generate-checksums.cjs', () => {
     const checksumPath = join(ROOT, 'pkg', 'checksums.sha256');
     const checksums = JSON.parse(readFileSync(checksumPath, 'utf8'));
 
-    for (const [file, hash] of Object.entries(checksums)) {
+    for (const [, hash] of Object.entries(checksums)) {
       expect(typeof hash).toBe('string');
       expect(hash).toMatch(/^[a-f0-9]{64}$/);
     }
