@@ -11,7 +11,7 @@ This document describes the development workflow for `fips-crypto`.
    Windows: install [rustup-init.exe](https://rustup.rs/)
 2. WebAssembly target: `rustup target add wasm32-unknown-unknown`
 3. `wasm-pack`: `cargo install wasm-pack`
-4. Node.js 18+
+4. Node.js 20+
 
 ### Getting Started
 
