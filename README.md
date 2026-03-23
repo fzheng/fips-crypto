@@ -12,6 +12,10 @@ Rust/WASM implementations of NIST post-quantum cryptography algorithms for Node.
 
 > This package implements the algorithm specifications in FIPS 203, FIPS 204, and FIPS 205.
 
+## Demo
+
+See the [fips-crypto-demo](https://github.com/fzheng/fips-crypto-demo) repo for a runnable example app that exercises ML-KEM, ML-DSA, and SLH-DSA end-to-end. Clone, install, and run it to see fips-crypto in action.
+
 ## Why fips-crypto
 
 - ML-KEM, ML-DSA, and SLH-DSA in one package
