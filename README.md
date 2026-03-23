@@ -12,6 +12,10 @@ Rust/WASM implementations of NIST post-quantum cryptography algorithms for Node.
 
 > This package implements the algorithm specifications in FIPS 203, FIPS 204, and FIPS 205.
 
+## Demo
+
+See the [fips-crypto-demo](https://github.com/fzheng/fips-crypto-demo) repo for a runnable example app that exercises ML-KEM, ML-DSA, and SLH-DSA end-to-end. Clone, install, and run it to see fips-crypto in action.
+
 ## Why fips-crypto
 
 - ML-KEM, ML-DSA, and SLH-DSA in one package
@@ -63,7 +67,7 @@ npm install fips-crypto
 
 | Runtime | Status | Notes |
 |---------|--------|-------|
-| Node.js 18+ | Supported | CI coverage on Linux, macOS, and Windows |
+| Node.js 20+ | Supported | CI coverage on Linux, macOS, and Windows |
 | Browsers | Supported | Requires a bundler/runtime that supports WASM module loading |
 | Bun | Untested | Community validation welcome |
 | Deno | Untested | Community validation welcome |
@@ -288,7 +292,7 @@ Checksums help detect post-publish corruption. Provenance helps confirm the pack
 1. Rust stable
 2. `wasm32-unknown-unknown` target
 3. `wasm-pack`
-4. Node.js 18+
+4. Node.js 20+
 
 ### Build and test
 

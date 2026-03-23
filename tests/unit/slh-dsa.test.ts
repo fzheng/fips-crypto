@@ -284,10 +284,10 @@ describe('SLH-DSA', () => {
   }
 
   // ==========================================================================
-  // 's' variant tests -- keygen + key size validation only (no sign/verify)
+  // 's' variant tests -- keygen + input validation (no full sign/verify for speed)
   // ==========================================================================
   for (const v of slowVariants) {
-    describe(`${v.name} (keygen only -- sign/verify skipped for speed)`, () => {
+    describe(`${v.name} (keygen + validation)`, () => {
       it('generates valid key pairs with correct sizes', async () => {
         const { publicKey, secretKey } = await v.impl.keygen();
         expect(publicKey).toBeInstanceOf(Uint8Array);
@@ -315,6 +315,26 @@ describe('SLH-DSA', () => {
         const kp2 = await v.impl.keygen(seed);
         expect(kp1.publicKey).toEqual(kp2.publicKey);
         expect(kp1.secretKey).toEqual(kp2.secretKey);
+      });
+
+      it('rejects invalid secret key length in sign', async () => {
+        const invalidSk = new Uint8Array(100);
+        const message = new Uint8Array([1, 2, 3]);
+        await expect(v.impl.sign(invalidSk, message)).rejects.toThrow('Invalid secret key length');
+      });
+
+      it('rejects invalid signature length in verify', async () => {
+        const pk = new Uint8Array(v.publicKeyBytes);
+        const message = new Uint8Array([1, 2, 3]);
+        const invalidSig = new Uint8Array(100);
+        await expect(v.impl.verify(pk, message, invalidSig)).rejects.toThrow('Invalid signature length');
+      });
+
+      it('rejects invalid public key length in verify', async () => {
+        const invalidPk = new Uint8Array(100);
+        const message = new Uint8Array([1, 2, 3]);
+        const sig = new Uint8Array(v.signatureBytes);
+        await expect(v.impl.verify(invalidPk, message, sig)).rejects.toThrow('Invalid public key length');
       });
     });
   }

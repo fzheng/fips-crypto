@@ -85,20 +85,20 @@ const SEED_BYTES: Record<128 | 192 | 256, number> = {
 };
 
 /**
- * WASM function signatures for a single SLH-DSA parameter set.
+ * WASM function binding names for a single SLH-DSA parameter set.
  */
-type WasmKeyGenFn = (seed?: Uint8Array) => { publicKey: Uint8Array; secretKey: Uint8Array };
-type WasmSignFn = (secretKey: Uint8Array, message: Uint8Array, context?: Uint8Array) => Uint8Array;
-type WasmVerifyFn = (publicKey: Uint8Array, message: Uint8Array, signature: Uint8Array, context?: Uint8Array) => boolean;
+interface WasmBindings {
+  keygen: string;
+  sign: string;
+  verify: string;
+}
 
 /**
- * Create a fully-validated SLH-DSA algorithm from WASM bindings.
+ * Create a fully-validated SLH-DSA algorithm from WASM binding names.
  */
 function createSlhDsa(
   params: SlhDsaParams,
-  keygenFn: () => WasmKeyGenFn,
-  signFn: () => WasmSignFn,
-  verifyFn: () => WasmVerifyFn,
+  bindings: WasmBindings,
 ): SlhDsaAlgorithm {
   const seedLength = SEED_BYTES[params.securityLevel];
 
@@ -112,8 +112,8 @@ function createSlhDsa(
           ErrorCodes.INVALID_SEED_LENGTH
         );
       }
-      ensureWasm();
-      const result = keygenFn()(seed) as {
+      const w = ensureWasm() as Record<string, CallableFunction>;
+      const result = w[bindings.keygen](seed) as {
         publicKey: Uint8Array;
         secretKey: Uint8Array;
       };
@@ -129,14 +129,14 @@ function createSlhDsa(
       context?: Uint8Array
     ): Promise<Uint8Array> {
       validateContext(context);
-      ensureWasm();
       if (secretKey.length !== params.secretKeyBytes) {
         throw new FipsCryptoError(
           `Invalid secret key length: expected ${params.secretKeyBytes}, got ${secretKey.length}`,
           ErrorCodes.INVALID_KEY_LENGTH
         );
       }
-      return new Uint8Array(signFn()(secretKey, message, context));
+      const w = ensureWasm() as Record<string, CallableFunction>;
+      return new Uint8Array(w[bindings.sign](secretKey, message, context));
     },
 
     async verify(
@@ -146,7 +146,6 @@ function createSlhDsa(
       context?: Uint8Array
     ): Promise<boolean> {
       validateContext(context);
-      ensureWasm();
       if (publicKey.length !== params.publicKeyBytes) {
         throw new FipsCryptoError(
           `Invalid public key length: expected ${params.publicKeyBytes}, got ${publicKey.length}`,
@@ -159,7 +158,8 @@ function createSlhDsa(
           ErrorCodes.INVALID_SIGNATURE_LENGTH
         );
       }
-      return verifyFn()(publicKey, message, signature, context);
+      const w = ensureWasm() as Record<string, CallableFunction>;
+      return w[bindings.verify](publicKey, message, signature, context);
     },
   };
 }
@@ -170,50 +170,20 @@ function createSlhDsa(
 
 /** SLH-DSA-SHA2-128s (small signatures) */
 export const slh_dsa_sha2_128s: SlhDsaAlgorithm = createSlhDsa(
-  {
-    name: 'SLH-DSA-SHA2-128s',
-    hash: 'SHA2',
-    securityLevel: 128,
-    variant: 's',
-    publicKeyBytes: 32,
-    secretKeyBytes: 64,
-    signatureBytes: 7856,
-  },
-  () => ensureWasm().slhDsaSha2_128sKeyGen,
-  () => ensureWasm().slhDsaSha2_128sSign,
-  () => ensureWasm().slhDsaSha2_128sVerify,
+  { name: 'SLH-DSA-SHA2-128s', hash: 'SHA2', securityLevel: 128, variant: 's', publicKeyBytes: 32, secretKeyBytes: 64, signatureBytes: 7856 },
+  { keygen: 'slhDsaSha2_128sKeyGen', sign: 'slhDsaSha2_128sSign', verify: 'slhDsaSha2_128sVerify' },
 );
 
 /** SLH-DSA-SHA2-128f (fast signing) */
 export const slh_dsa_sha2_128f: SlhDsaAlgorithm = createSlhDsa(
-  {
-    name: 'SLH-DSA-SHA2-128f',
-    hash: 'SHA2',
-    securityLevel: 128,
-    variant: 'f',
-    publicKeyBytes: 32,
-    secretKeyBytes: 64,
-    signatureBytes: 17088,
-  },
-  () => ensureWasm().slhDsaSha2_128fKeyGen,
-  () => ensureWasm().slhDsaSha2_128fSign,
-  () => ensureWasm().slhDsaSha2_128fVerify,
+  { name: 'SLH-DSA-SHA2-128f', hash: 'SHA2', securityLevel: 128, variant: 'f', publicKeyBytes: 32, secretKeyBytes: 64, signatureBytes: 17088 },
+  { keygen: 'slhDsaSha2_128fKeyGen', sign: 'slhDsaSha2_128fSign', verify: 'slhDsaSha2_128fVerify' },
 );
 
 /** SLH-DSA-SHA2-192s (small signatures) */
 export const slh_dsa_sha2_192s: SlhDsaAlgorithm = createSlhDsa(
-  {
-    name: 'SLH-DSA-SHA2-192s',
-    hash: 'SHA2',
-    securityLevel: 192,
-    variant: 's',
-    publicKeyBytes: 48,
-    secretKeyBytes: 96,
-    signatureBytes: 16224,
-  },
-  () => ensureWasm().slhDsaSha2_192sKeyGen,
-  () => ensureWasm().slhDsaSha2_192sSign,
-  () => ensureWasm().slhDsaSha2_192sVerify,
+  { name: 'SLH-DSA-SHA2-192s', hash: 'SHA2', securityLevel: 192, variant: 's', publicKeyBytes: 48, secretKeyBytes: 96, signatureBytes: 16224 },
+  { keygen: 'slhDsaSha2_192sKeyGen', sign: 'slhDsaSha2_192sSign', verify: 'slhDsaSha2_192sVerify' },
 );
 
 /**
@@ -227,50 +197,20 @@ export const slh_dsa_sha2_192s: SlhDsaAlgorithm = createSlhDsa(
  * ```
  */
 export const slh_dsa_sha2_192f: SlhDsaAlgorithm = createSlhDsa(
-  {
-    name: 'SLH-DSA-SHA2-192f',
-    hash: 'SHA2',
-    securityLevel: 192,
-    variant: 'f',
-    publicKeyBytes: 48,
-    secretKeyBytes: 96,
-    signatureBytes: 35664,
-  },
-  () => ensureWasm().slhDsaSha2_192fKeyGen,
-  () => ensureWasm().slhDsaSha2_192fSign,
-  () => ensureWasm().slhDsaSha2_192fVerify,
+  { name: 'SLH-DSA-SHA2-192f', hash: 'SHA2', securityLevel: 192, variant: 'f', publicKeyBytes: 48, secretKeyBytes: 96, signatureBytes: 35664 },
+  { keygen: 'slhDsaSha2_192fKeyGen', sign: 'slhDsaSha2_192fSign', verify: 'slhDsaSha2_192fVerify' },
 );
 
 /** SLH-DSA-SHA2-256s (small signatures) */
 export const slh_dsa_sha2_256s: SlhDsaAlgorithm = createSlhDsa(
-  {
-    name: 'SLH-DSA-SHA2-256s',
-    hash: 'SHA2',
-    securityLevel: 256,
-    variant: 's',
-    publicKeyBytes: 64,
-    secretKeyBytes: 128,
-    signatureBytes: 29792,
-  },
-  () => ensureWasm().slhDsaSha2_256sKeyGen,
-  () => ensureWasm().slhDsaSha2_256sSign,
-  () => ensureWasm().slhDsaSha2_256sVerify,
+  { name: 'SLH-DSA-SHA2-256s', hash: 'SHA2', securityLevel: 256, variant: 's', publicKeyBytes: 64, secretKeyBytes: 128, signatureBytes: 29792 },
+  { keygen: 'slhDsaSha2_256sKeyGen', sign: 'slhDsaSha2_256sSign', verify: 'slhDsaSha2_256sVerify' },
 );
 
 /** SLH-DSA-SHA2-256f (fast signing) */
 export const slh_dsa_sha2_256f: SlhDsaAlgorithm = createSlhDsa(
-  {
-    name: 'SLH-DSA-SHA2-256f',
-    hash: 'SHA2',
-    securityLevel: 256,
-    variant: 'f',
-    publicKeyBytes: 64,
-    secretKeyBytes: 128,
-    signatureBytes: 49856,
-  },
-  () => ensureWasm().slhDsaSha2_256fKeyGen,
-  () => ensureWasm().slhDsaSha2_256fSign,
-  () => ensureWasm().slhDsaSha2_256fVerify,
+  { name: 'SLH-DSA-SHA2-256f', hash: 'SHA2', securityLevel: 256, variant: 'f', publicKeyBytes: 64, secretKeyBytes: 128, signatureBytes: 49856 },
+  { keygen: 'slhDsaSha2_256fKeyGen', sign: 'slhDsaSha2_256fSign', verify: 'slhDsaSha2_256fVerify' },
 );
 
 // ============================================================================
@@ -279,50 +219,20 @@ export const slh_dsa_sha2_256f: SlhDsaAlgorithm = createSlhDsa(
 
 /** SLH-DSA-SHAKE-128s (small signatures) */
 export const slh_dsa_shake_128s: SlhDsaAlgorithm = createSlhDsa(
-  {
-    name: 'SLH-DSA-SHAKE-128s',
-    hash: 'SHAKE',
-    securityLevel: 128,
-    variant: 's',
-    publicKeyBytes: 32,
-    secretKeyBytes: 64,
-    signatureBytes: 7856,
-  },
-  () => ensureWasm().slhDsaShake128sKeyGen,
-  () => ensureWasm().slhDsaShake128sSign,
-  () => ensureWasm().slhDsaShake128sVerify,
+  { name: 'SLH-DSA-SHAKE-128s', hash: 'SHAKE', securityLevel: 128, variant: 's', publicKeyBytes: 32, secretKeyBytes: 64, signatureBytes: 7856 },
+  { keygen: 'slhDsaShake128sKeyGen', sign: 'slhDsaShake128sSign', verify: 'slhDsaShake128sVerify' },
 );
 
 /** SLH-DSA-SHAKE-128f (fast signing) */
 export const slh_dsa_shake_128f: SlhDsaAlgorithm = createSlhDsa(
-  {
-    name: 'SLH-DSA-SHAKE-128f',
-    hash: 'SHAKE',
-    securityLevel: 128,
-    variant: 'f',
-    publicKeyBytes: 32,
-    secretKeyBytes: 64,
-    signatureBytes: 17088,
-  },
-  () => ensureWasm().slhDsaShake128fKeyGen,
-  () => ensureWasm().slhDsaShake128fSign,
-  () => ensureWasm().slhDsaShake128fVerify,
+  { name: 'SLH-DSA-SHAKE-128f', hash: 'SHAKE', securityLevel: 128, variant: 'f', publicKeyBytes: 32, secretKeyBytes: 64, signatureBytes: 17088 },
+  { keygen: 'slhDsaShake128fKeyGen', sign: 'slhDsaShake128fSign', verify: 'slhDsaShake128fVerify' },
 );
 
 /** SLH-DSA-SHAKE-192s (small signatures) */
 export const slh_dsa_shake_192s: SlhDsaAlgorithm = createSlhDsa(
-  {
-    name: 'SLH-DSA-SHAKE-192s',
-    hash: 'SHAKE',
-    securityLevel: 192,
-    variant: 's',
-    publicKeyBytes: 48,
-    secretKeyBytes: 96,
-    signatureBytes: 16224,
-  },
-  () => ensureWasm().slhDsaShake192sKeyGen,
-  () => ensureWasm().slhDsaShake192sSign,
-  () => ensureWasm().slhDsaShake192sVerify,
+  { name: 'SLH-DSA-SHAKE-192s', hash: 'SHAKE', securityLevel: 192, variant: 's', publicKeyBytes: 48, secretKeyBytes: 96, signatureBytes: 16224 },
+  { keygen: 'slhDsaShake192sKeyGen', sign: 'slhDsaShake192sSign', verify: 'slhDsaShake192sVerify' },
 );
 
 /**
@@ -336,48 +246,18 @@ export const slh_dsa_shake_192s: SlhDsaAlgorithm = createSlhDsa(
  * ```
  */
 export const slh_dsa_shake_192f: SlhDsaAlgorithm = createSlhDsa(
-  {
-    name: 'SLH-DSA-SHAKE-192f',
-    hash: 'SHAKE',
-    securityLevel: 192,
-    variant: 'f',
-    publicKeyBytes: 48,
-    secretKeyBytes: 96,
-    signatureBytes: 35664,
-  },
-  () => ensureWasm().slhDsaShake192fKeyGen,
-  () => ensureWasm().slhDsaShake192fSign,
-  () => ensureWasm().slhDsaShake192fVerify,
+  { name: 'SLH-DSA-SHAKE-192f', hash: 'SHAKE', securityLevel: 192, variant: 'f', publicKeyBytes: 48, secretKeyBytes: 96, signatureBytes: 35664 },
+  { keygen: 'slhDsaShake192fKeyGen', sign: 'slhDsaShake192fSign', verify: 'slhDsaShake192fVerify' },
 );
 
 /** SLH-DSA-SHAKE-256s (small signatures) */
 export const slh_dsa_shake_256s: SlhDsaAlgorithm = createSlhDsa(
-  {
-    name: 'SLH-DSA-SHAKE-256s',
-    hash: 'SHAKE',
-    securityLevel: 256,
-    variant: 's',
-    publicKeyBytes: 64,
-    secretKeyBytes: 128,
-    signatureBytes: 29792,
-  },
-  () => ensureWasm().slhDsaShake256sKeyGen,
-  () => ensureWasm().slhDsaShake256sSign,
-  () => ensureWasm().slhDsaShake256sVerify,
+  { name: 'SLH-DSA-SHAKE-256s', hash: 'SHAKE', securityLevel: 256, variant: 's', publicKeyBytes: 64, secretKeyBytes: 128, signatureBytes: 29792 },
+  { keygen: 'slhDsaShake256sKeyGen', sign: 'slhDsaShake256sSign', verify: 'slhDsaShake256sVerify' },
 );
 
 /** SLH-DSA-SHAKE-256f (fast signing) */
 export const slh_dsa_shake_256f: SlhDsaAlgorithm = createSlhDsa(
-  {
-    name: 'SLH-DSA-SHAKE-256f',
-    hash: 'SHAKE',
-    securityLevel: 256,
-    variant: 'f',
-    publicKeyBytes: 64,
-    secretKeyBytes: 128,
-    signatureBytes: 49856,
-  },
-  () => ensureWasm().slhDsaShake256fKeyGen,
-  () => ensureWasm().slhDsaShake256fSign,
-  () => ensureWasm().slhDsaShake256fVerify,
+  { name: 'SLH-DSA-SHAKE-256f', hash: 'SHAKE', securityLevel: 256, variant: 'f', publicKeyBytes: 64, secretKeyBytes: 128, signatureBytes: 49856 },
+  { keygen: 'slhDsaShake256fKeyGen', sign: 'slhDsaShake256fSign', verify: 'slhDsaShake256fVerify' },
 );

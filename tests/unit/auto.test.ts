@@ -13,8 +13,18 @@ import {
   ml_dsa44,
   ml_dsa65,
   ml_dsa87,
-  slh_dsa_shake_128f,
+  slh_dsa_sha2_128s,
   slh_dsa_sha2_128f,
+  slh_dsa_sha2_192s,
+  slh_dsa_sha2_192f,
+  slh_dsa_sha2_256s,
+  slh_dsa_sha2_256f,
+  slh_dsa_shake_128s,
+  slh_dsa_shake_128f,
+  slh_dsa_shake_192s,
+  slh_dsa_shake_192f,
+  slh_dsa_shake_256s,
+  slh_dsa_shake_256f,
 } from '../../src/auto.js';
 
 describe('Auto-init entry point', () => {
@@ -114,34 +124,39 @@ describe('Auto-init entry point', () => {
   });
 
   describe('SLH-DSA auto-init', () => {
-    it('slh_dsa_shake_128f: keygen + sign + verify without init()', async () => {
-      const { publicKey, secretKey } = await slh_dsa_shake_128f.keygen();
-      expect(publicKey).toBeInstanceOf(Uint8Array);
-      expect(publicKey.length).toBe(32);
-      expect(secretKey.length).toBe(64);
+    const allSlhDsa = [
+      { name: 'SLH-DSA-SHA2-128s', impl: slh_dsa_sha2_128s, pk: 32, sk: 64 },
+      { name: 'SLH-DSA-SHA2-128f', impl: slh_dsa_sha2_128f, pk: 32, sk: 64 },
+      { name: 'SLH-DSA-SHA2-192s', impl: slh_dsa_sha2_192s, pk: 48, sk: 96 },
+      { name: 'SLH-DSA-SHA2-192f', impl: slh_dsa_sha2_192f, pk: 48, sk: 96 },
+      { name: 'SLH-DSA-SHA2-256s', impl: slh_dsa_sha2_256s, pk: 64, sk: 128 },
+      { name: 'SLH-DSA-SHA2-256f', impl: slh_dsa_sha2_256f, pk: 64, sk: 128 },
+      { name: 'SLH-DSA-SHAKE-128s', impl: slh_dsa_shake_128s, pk: 32, sk: 64 },
+      { name: 'SLH-DSA-SHAKE-128f', impl: slh_dsa_shake_128f, pk: 32, sk: 64 },
+      { name: 'SLH-DSA-SHAKE-192s', impl: slh_dsa_shake_192s, pk: 48, sk: 96 },
+      { name: 'SLH-DSA-SHAKE-192f', impl: slh_dsa_shake_192f, pk: 48, sk: 96 },
+      { name: 'SLH-DSA-SHAKE-256s', impl: slh_dsa_shake_256s, pk: 64, sk: 128 },
+      { name: 'SLH-DSA-SHAKE-256f', impl: slh_dsa_shake_256f, pk: 64, sk: 128 },
+    ];
 
+    for (const v of allSlhDsa) {
+      it(`${v.name}: params and keygen without init()`, async () => {
+        expect(v.impl.params.name).toBe(v.name);
+        expect(v.impl.params.publicKeyBytes).toBe(v.pk);
+
+        const { publicKey, secretKey } = await v.impl.keygen();
+        expect(publicKey.length).toBe(v.pk);
+        expect(secretKey.length).toBe(v.sk);
+      });
+    }
+
+    it('slh_dsa_shake_128f: sign + verify roundtrip without init()', async () => {
+      const { publicKey, secretKey } = await slh_dsa_shake_128f.keygen();
       const msg = new TextEncoder().encode('auto-init SLH-DSA test');
       const signature = await slh_dsa_shake_128f.sign(secretKey, msg);
       expect(signature).toBeInstanceOf(Uint8Array);
-
       const valid = await slh_dsa_shake_128f.verify(publicKey, msg, signature);
       expect(valid).toBe(true);
-    });
-
-    it('slh_dsa_sha2_128f: keygen produces correct key sizes', async () => {
-      const { publicKey, secretKey } = await slh_dsa_sha2_128f.keygen();
-      expect(publicKey.length).toBe(32);
-      expect(secretKey.length).toBe(64);
-    });
-
-    it('slh_dsa_shake_128f.params available without init', () => {
-      expect(slh_dsa_shake_128f.params.name).toBe('SLH-DSA-SHAKE-128f');
-      expect(slh_dsa_shake_128f.params.publicKeyBytes).toBe(32);
-    });
-
-    it('slh_dsa_sha2_128f.params available without init', () => {
-      expect(slh_dsa_sha2_128f.params.name).toBe('SLH-DSA-SHA2-128f');
-      expect(slh_dsa_sha2_128f.params.hash).toBe('SHA2');
     });
   });
 });
