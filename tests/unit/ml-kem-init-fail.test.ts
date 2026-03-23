@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('../../pkg/fips_crypto_wasm.js', () => {
+vi.mock('../../pkg-node/fips_crypto_wasm.js', () => {
   throw new Error('WASM module not found');
 });
 
