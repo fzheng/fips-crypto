@@ -1,10 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'path';
-import wasm from 'vite-plugin-wasm';
-import topLevelAwait from 'vite-plugin-top-level-await';
 
 export default defineConfig({
-  plugins: [wasm(), topLevelAwait()],
   test: {
     globals: true,
     environment: 'node',
@@ -30,7 +27,7 @@ export default defineConfig({
   resolve: {
     alias: {
       'fips-crypto': resolve(__dirname, './src'),
-      '../pkg/fips_crypto_wasm.js': resolve(__dirname, './pkg/fips_crypto_wasm.js'),
+      '../pkg/fips_crypto_wasm.js': resolve(__dirname, './pkg-node/fips_crypto_wasm.js'),
     },
   },
 });

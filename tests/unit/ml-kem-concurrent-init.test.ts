@@ -11,7 +11,7 @@ import { describe, it, vi } from 'vitest';
 let resolveWasm: (value: unknown) => void;
 const wasmPromise = new Promise((resolve) => { resolveWasm = resolve; });
 
-vi.mock('../../pkg/fips_crypto_wasm.js', () => {
+vi.mock('../../pkg-node/fips_crypto_wasm.js', () => {
   return wasmPromise;
 });
 

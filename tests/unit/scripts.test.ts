@@ -175,24 +175,53 @@ describe('scripts/verify-integrity.cjs', () => {
 });
 
 describe('scripts/patch-wasm.cjs', () => {
-  it('patches Function() pattern in generated JS', () => {
-    // Verify the patch was applied during build
-    const bgJsPath = join(ROOT, 'pkg', 'fips_crypto_wasm_bg.js');
-    const content = readFileSync(bgJsPath, 'utf8');
+  // wasm-bindgen emits `return \`Function(\${name})\`;` inside a debugString
+  // helper.  Static analysis tools (Socket.dev) flag this as dynamic code
+  // execution (eval risk).  patch-wasm.cjs rewrites it to a safe equivalent
+  // so that the published package passes security scans.
 
-    // Should NOT contain the original eval-like pattern
-    expect(content).not.toContain('return `Function(${name})`;');
+  const UNSAFE = 'return `Function(${name})`;';
+  const SAFE   = 'return `[Function ${name}]`;';
 
-    // Should contain the patched version
-    expect(content).toContain('return `[Function ${name}]`;');
+  // Bundler target: debugString lives in fips_crypto_wasm_bg.js
+  it('no eval-like pattern in pkg/ JS files (bundler target)', () => {
+    const bgJs = join(ROOT, 'pkg', 'fips_crypto_wasm_bg.js');
+    const content = readFileSync(bgJs, 'utf8');
+    expect(content).not.toContain(UNSAFE);
+    expect(content).toContain(SAFE);
   });
 
-  it('patch is also applied in dist/pkg/', () => {
-    const bgJsPath = join(ROOT, 'dist', 'pkg', 'fips_crypto_wasm_bg.js');
-    if (existsSync(bgJsPath)) {
-      const content = readFileSync(bgJsPath, 'utf8');
-      expect(content).not.toContain('return `Function(${name})`;');
-      expect(content).toContain('return `[Function ${name}]`;');
+  // Node target: debugString lives in fips_crypto_wasm.js (no _bg.js)
+  it('no eval-like pattern in pkg-node/ JS files (nodejs target)', () => {
+    const nodeJs = join(ROOT, 'pkg-node', 'fips_crypto_wasm.js');
+    const content = readFileSync(nodeJs, 'utf8');
+    expect(content).not.toContain(UNSAFE);
+    expect(content).toContain(SAFE);
+  });
+
+  it('no eval-like pattern in dist/pkg/ (published bundler artifact)', () => {
+    const bgJs = join(ROOT, 'dist', 'pkg', 'fips_crypto_wasm_bg.js');
+    if (existsSync(bgJs)) {
+      const content = readFileSync(bgJs, 'utf8');
+      expect(content).not.toContain(UNSAFE);
     }
+  });
+
+  it('no eval-like pattern in dist/pkg-node/ (published nodejs artifact)', () => {
+    const nodeJs = join(ROOT, 'dist', 'pkg-node', 'fips_crypto_wasm.js');
+    if (existsSync(nodeJs)) {
+      const content = readFileSync(nodeJs, 'utf8');
+      expect(content).not.toContain(UNSAFE);
+    }
+  });
+
+  it('re-running patch-wasm is idempotent', () => {
+    const nodeJs = join(ROOT, 'pkg-node', 'fips_crypto_wasm.js');
+    const before = readFileSync(nodeJs, 'utf8');
+
+    execSync('node scripts/patch-wasm.cjs', { cwd: ROOT });
+
+    const after = readFileSync(nodeJs, 'utf8');
+    expect(after).toBe(before);
   });
 });

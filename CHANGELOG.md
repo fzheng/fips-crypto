@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-03-24
+
+### Added
+
+- Published benchmark results in README (ops/sec for ML-KEM, ML-DSA, SLH-DSA)
+- `examples/` folder with 4 ready-to-run scripts: key encapsulation, digital signatures, hash-based signatures, CommonJS usage
+- Node ESM distribution (`dist/node-esm/`) for correct WASM loading under Node.js without a bundler
+- Packed-artifact smoke tests for Node ESM, CJS, and the integrity verifier CLI
+
+### Changed
+
+- README rewritten for developer onboarding: value proposition, "Try it now" code, benchmark tables, choosing parameter sets guide, and star CTA
+- Browser runtime status narrowed from "Supported" to "Compatible" (not yet CI-validated)
+- `fips-crypto/auto` documented as working with both ESM `import` and CommonJS `require()`
+- Upgraded vitest from v1 to v4 and removed `vite-plugin-wasm` dependency
+- Dropped Node.js 18 from CI matrix (EOL April 2025; vitest v4 requires Node 20+)
+- `engines.node` bumped to `>=20.0.0`
+- SLH-DSA internals refactored from per-variant arrow functions to string-based WASM binding lookup, eliminating 36 closure functions and improving coverage instrumentation
+- `patch-wasm.cjs` now patches all JS files in both `pkg/` and `pkg-node/`, with detailed comments explaining the Socket.dev eval-risk mitigation
+
+### Fixed
+
+- Socket.dev eval-risk false positive in `pkg-node/fips_crypto_wasm.js` (previously only `pkg/fips_crypto_wasm_bg.js` was patched)
+- ESM smoke test now uses `dist/node-esm/` instead of `dist/esm/` (bundler target), fixing WASM load failure on Node.js in CI
+- Coverage thresholds now pass under vitest v4's stricter function instrumentation
+
 ## [0.6.0] - 2026-03-22
 
 ### Added
@@ -170,7 +196,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TypeScript/JavaScript wrappers with ESM and CJS support
 - SLH-DSA parameter set definitions (stubs)
 
-[Unreleased]: https://github.com/fzheng/fips-crypto/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/fzheng/fips-crypto/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/fzheng/fips-crypto/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/fzheng/fips-crypto/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/fzheng/fips-crypto/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/fzheng/fips-crypto/compare/0.3.0...v0.4.0
