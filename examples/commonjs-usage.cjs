@@ -2,16 +2,16 @@
  * CommonJS Usage Example
  *
  * Demonstrates using fips-crypto with require() in CommonJS projects.
- * Uses explicit init() since auto-init is ESM-only.
+ * Both explicit init() and auto-init work with require().
  *
  * Run: node examples/commonjs-usage.cjs
  */
 
-const { init, ml_kem768, ml_dsa65 } = require('fips-crypto');
+const { ml_kem768, ml_dsa65 } = require('fips-crypto/auto');
 
 async function main() {
-  await init();
-  console.log('WASM modules initialized\n');
+  // No init() needed — auto-init handles it on first use
+  console.log('Using fips-crypto/auto with CommonJS\n');
 
   // ML-KEM key encapsulation
   const { publicKey, secretKey } = await ml_kem768.keygen();

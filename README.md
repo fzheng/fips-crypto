@@ -18,7 +18,7 @@ High-performance post-quantum cryptography for JavaScript and TypeScript, powere
 - **Rust + WebAssembly core** &mdash; constant-time-oriented critical paths with Rust-side zeroization of secret material
 - **TypeScript-first** &mdash; full type definitions, explicit input validation, clear error codes
 - **Tested and benchmarked** &mdash; 940+ tests, 99%+ coverage, cross-implementation compliance vectors
-- **Works everywhere** &mdash; ESM, CommonJS, Node.js, browsers, lazy auto-init
+- **Flexible** &mdash; ESM, CommonJS, auto-init; Node.js CI-tested, browser-compatible via bundlers
 
 ## Try it now
 
@@ -142,7 +142,7 @@ npm install fips-crypto
 | Runtime | Status | Notes |
 |---------|--------|-------|
 | Node.js 20+ | Supported | CI tested on Linux, macOS, and Windows |
-| Browsers | Supported | Requires a bundler that supports WASM module loading |
+| Browsers | Compatible | Requires a bundler with WASM support; not yet CI-validated |
 | Bun | Untested | Community validation welcome |
 | Deno | Untested | Community validation welcome |
 
