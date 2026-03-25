@@ -55,8 +55,8 @@ describe('fips-crypto module', () => {
       expect(VERSION).toMatch(/^\d+\.\d+\.\d+$/);
     });
 
-    it('VERSION is 0.7.0', () => {
-      expect(VERSION).toBe('0.7.0');
+    it('VERSION is 1.0.0', () => {
+      expect(VERSION).toBe('1.0.0');
     });
   });
 
