@@ -17,7 +17,7 @@ High-performance post-quantum cryptography for JavaScript and TypeScript, powere
 - **Standards-focused** &mdash; implements NIST [FIPS 203](https://csrc.nist.gov/pubs/fips/203/final) (ML-KEM), [FIPS 204](https://csrc.nist.gov/pubs/fips/204/final) (ML-DSA), and [FIPS 205](https://csrc.nist.gov/pubs/fips/205/final) (SLH-DSA)
 - **Rust + WebAssembly core** &mdash; constant-time-oriented critical paths with Rust-side zeroization of secret material
 - **TypeScript-first** &mdash; full type definitions, explicit input validation, clear error codes
-- **Tested and benchmarked** &mdash; 940+ tests, 99%+ coverage, cross-implementation compliance vectors
+- **Tested and benchmarked** &mdash; 970+ tests, 99%+ coverage, cross-implementation compliance vectors
 - **Flexible** &mdash; ESM, CommonJS, auto-init; Node.js CI-tested, browser-compatible via bundlers
 
 ## Try it now
@@ -239,7 +239,7 @@ Every build includes SHA-256 checksums for WASM artifacts. Provenance links each
 
 ## Validation and testing
 
-- **940+** tests (746 JavaScript/TypeScript + 225 Rust)
+- **970+** tests (748 JavaScript/TypeScript + 225 Rust)
 - **99%+** coverage (statements, functions, branches, lines)
 - Cross-implementation compliance vectors for all algorithm families
 - Packed-artifact smoke tests in CI

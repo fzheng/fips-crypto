@@ -355,8 +355,8 @@ describe('Safeguard Tests', () => {
       codes.forEach(c => expect(typeof c).toBe('string'));
     });
 
-    it('has exactly 9 error codes', () => {
-      expect(Object.keys(ErrorCodes).length).toBe(9);
+    it('has exactly 6 error codes', () => {
+      expect(Object.keys(ErrorCodes).length).toBe(6);
     });
   });
 

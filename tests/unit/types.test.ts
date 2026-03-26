@@ -112,19 +112,9 @@ describe('FipsCryptoError', () => {
       expect(error.code).toBe('INVALID_SEED_LENGTH');
     });
 
-    it('works with DECAPSULATION_FAILED', () => {
-      const error = new FipsCryptoError('Decap failed', ErrorCodes.DECAPSULATION_FAILED);
-      expect(error.code).toBe('DECAPSULATION_FAILED');
-    });
-
-    it('works with VERIFICATION_FAILED', () => {
-      const error = new FipsCryptoError('Verify failed', ErrorCodes.VERIFICATION_FAILED);
-      expect(error.code).toBe('VERIFICATION_FAILED');
-    });
-
-    it('works with NOT_IMPLEMENTED', () => {
-      const error = new FipsCryptoError('Not implemented', ErrorCodes.NOT_IMPLEMENTED);
-      expect(error.code).toBe('NOT_IMPLEMENTED');
+    it('works with INVALID_CONTEXT_LENGTH', () => {
+      const error = new FipsCryptoError('Context too long', ErrorCodes.INVALID_CONTEXT_LENGTH);
+      expect(error.code).toBe('INVALID_CONTEXT_LENGTH');
     });
   });
 });
@@ -151,16 +141,8 @@ describe('ErrorCodes', () => {
       expect(ErrorCodes.INVALID_SEED_LENGTH).toBe('INVALID_SEED_LENGTH');
     });
 
-    it('has DECAPSULATION_FAILED', () => {
-      expect(ErrorCodes.DECAPSULATION_FAILED).toBe('DECAPSULATION_FAILED');
-    });
-
-    it('has VERIFICATION_FAILED', () => {
-      expect(ErrorCodes.VERIFICATION_FAILED).toBe('VERIFICATION_FAILED');
-    });
-
-    it('has NOT_IMPLEMENTED', () => {
-      expect(ErrorCodes.NOT_IMPLEMENTED).toBe('NOT_IMPLEMENTED');
+    it('has INVALID_CONTEXT_LENGTH', () => {
+      expect(ErrorCodes.INVALID_CONTEXT_LENGTH).toBe('INVALID_CONTEXT_LENGTH');
     });
   });
 
@@ -171,9 +153,7 @@ describe('ErrorCodes', () => {
       expect(typeof ErrorCodes.INVALID_CIPHERTEXT_LENGTH).toBe('string');
       expect(typeof ErrorCodes.INVALID_SIGNATURE_LENGTH).toBe('string');
       expect(typeof ErrorCodes.INVALID_SEED_LENGTH).toBe('string');
-      expect(typeof ErrorCodes.DECAPSULATION_FAILED).toBe('string');
-      expect(typeof ErrorCodes.VERIFICATION_FAILED).toBe('string');
-      expect(typeof ErrorCodes.NOT_IMPLEMENTED).toBe('string');
+      expect(typeof ErrorCodes.INVALID_CONTEXT_LENGTH).toBe('string');
     });
 
     it('error codes are unique', () => {
@@ -182,9 +162,9 @@ describe('ErrorCodes', () => {
       expect(codes.length).toBe(uniqueCodes.size);
     });
 
-    it('has exactly 9 error codes', () => {
+    it('has exactly 6 error codes', () => {
       const codes = Object.keys(ErrorCodes);
-      expect(codes.length).toBe(9);
+      expect(codes.length).toBe(6);
     });
   });
 
@@ -198,8 +178,6 @@ describe('ErrorCodes', () => {
             return 'Check key size';
           case ErrorCodes.INVALID_CIPHERTEXT_LENGTH:
             return 'Check ciphertext size';
-          case ErrorCodes.NOT_IMPLEMENTED:
-            return 'Feature not available';
           default:
             return 'Unknown error';
         }
@@ -207,7 +185,6 @@ describe('ErrorCodes', () => {
 
       expect(handleError(ErrorCodes.WASM_NOT_INITIALIZED)).toBe('Initialize WASM first');
       expect(handleError(ErrorCodes.INVALID_KEY_LENGTH)).toBe('Check key size');
-      expect(handleError(ErrorCodes.NOT_IMPLEMENTED)).toBe('Feature not available');
       expect(handleError('UNKNOWN')).toBe('Unknown error');
     });
   });

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-03-25
+
+### Added
+
+- Runtime WASM integrity check: SHA-256 hash of the WASM binary is embedded in the Node.js loader at build time and verified before instantiation, blocking tampered binaries from executing
+- Tests for the runtime integrity check (embedded hash correctness and tamper detection)
+
+### Changed
+
+- Version bumped to 1.0.0 — first stable release with a public API commitment
+- Removed unused error codes (`DECAPSULATION_FAILED`, `VERIFICATION_FAILED`, `NOT_IMPLEMENTED`) from the public API to keep the 1.0.0 surface minimal
+- Publish workflow migrated from long-lived `NPM_TOKEN` to OIDC trusted publishing for stronger supply chain security
+- `picomatch` dev dependency updated to fix high-severity ReDoS vulnerability (CVE in transitive dep; not in published package)
+
+### Fixed
+
+- Socket.dev filesystem-access warning mitigated: the WASM binary is now verified against an embedded SHA-256 hash before `WebAssembly.Module` instantiation
+
 ## [0.7.0] - 2026-03-24
 
 ### Added
@@ -196,7 +214,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TypeScript/JavaScript wrappers with ESM and CJS support
 - SLH-DSA parameter set definitions (stubs)
 
-[Unreleased]: https://github.com/fzheng/fips-crypto/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/fzheng/fips-crypto/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/fzheng/fips-crypto/compare/v0.7.0...v1.0.0
 [0.7.0]: https://github.com/fzheng/fips-crypto/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/fzheng/fips-crypto/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/fzheng/fips-crypto/compare/v0.4.0...v0.5.0
