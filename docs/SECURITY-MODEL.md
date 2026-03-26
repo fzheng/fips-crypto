@@ -2,6 +2,22 @@
 
 This document describes what fips-crypto protects against, how, and what it does not guarantee.
 
+## Quantum Threat Context
+
+Classical public-key cryptography (RSA, ECDSA, ECDH/X25519) is vulnerable to Shor's algorithm on a sufficiently powerful quantum computer. The specific threats:
+
+| Classical algorithm | Used in | Quantum attack | fips-crypto replacement |
+|---------------------|---------|----------------|------------------------|
+| ECDSA (secp256k1) | Bitcoin/Ethereum transaction signing, TLS | Private key recovery from public key | ML-DSA (FIPS 204), SLH-DSA (FIPS 205) |
+| RSA signing | HTTPS, S/MIME, code signing | Factorization in polynomial time | ML-DSA (FIPS 204), SLH-DSA (FIPS 205) |
+| RSA encryption | Key transport, S/MIME encryption | Factorization in polynomial time | ML-KEM (FIPS 203) |
+| ECDH / X25519 | TLS key exchange, Signal Protocol | Shared secret recovery | ML-KEM (FIPS 203) |
+| AES-256, SHA-256 | Symmetric encryption, hashing | Grover's gives ~128-bit equivalent | **Not considered at risk** at current key sizes |
+
+Note: hash functions and symmetric ciphers are not known to be broken by quantum algorithms at standard key sizes, though future cryptanalytic advances cannot be ruled out. fips-crypto replaces the asymmetric primitives that are at risk, not hash functions.
+
+See the [quantum-safe wallet example](../examples/quantum-safe-wallet.mjs) for a demonstration of replacing the ECDSA signature primitive in a cryptocurrency-style workflow. Note that a real blockchain migration would also require protocol-level changes (address derivation, serialization, consensus rules) beyond the cryptographic primitive swap.
+
 ## Threat Model
 
 fips-crypto is designed to protect against:
