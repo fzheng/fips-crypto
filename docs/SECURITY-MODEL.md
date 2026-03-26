@@ -106,6 +106,12 @@ npm run verify:integrity
 
 This compares the actual file hashes against the stored checksums. Any mismatch indicates tampering or corruption.
 
+### Runtime WASM integrity check
+
+The Node.js build (`pkg-node/`) includes a runtime integrity guard. At build time, the SHA-256 hash of the WASM binary is computed and embedded directly in the JS loader file. At module load time, before `new WebAssembly.Module()` is called, the loader recomputes the hash of the file it just read from disk and compares it against the embedded constant. If they differ, the module throws immediately instead of executing unknown code.
+
+This protects against post-install tampering of the WASM binary (e.g., a compromised CDN or filesystem modification) without depending on a separate checksums file that could also be replaced.
+
 ### npm Provenance
 
 Releases published via GitHub Actions use npm's `--provenance` flag, which creates a [Sigstore](https://www.sigstore.dev/) attestation linking the published package to the specific GitHub Actions workflow run, commit SHA, and repository. This is visible as a "Provenance" badge on the npm package page.
@@ -124,9 +130,10 @@ npm audit signatures
 
 **Defense in depth**: Use both. Checksums catch accidental corruption and CDN issues. Provenance catches deliberate supply chain attacks on the publish step. Neither protects against a compromised source repository (e.g., a malicious commit merged to `main`). For that, rely on code review and branch protection rules.
 
-| Threat | Checksums | Provenance |
-|--------|-----------|------------|
-| CDN/mirror corruption | Detects | No |
-| Stolen npm token | No | Detects |
-| Compromised CI environment | No | No |
-| Malicious source commit | No | No |
+| Threat | Runtime WASM check | Checksums | Provenance |
+|--------|--------------------|-----------|------------|
+| WASM binary tampered post-install | Detects | Detects | No |
+| CDN/mirror corruption | Detects | Detects | No |
+| Stolen npm token | No | No | Detects |
+| Compromised CI environment | No | No | No |
+| Malicious source commit | No | No | No |
