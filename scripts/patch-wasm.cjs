@@ -84,6 +84,7 @@ if (fs.existsSync(wasmBinaryPath)) {
     .map(f => path.join(NODE_WASM_DIR, f))
     .filter(f => fs.readFileSync(f, 'utf8').includes('readFileSync(wasmPath)'));
 
+  let patchedCount = 0;
   for (const loaderPath of loaderFiles) {
     let content = fs.readFileSync(loaderPath, 'utf8');
 
@@ -107,6 +108,15 @@ if (fs.existsSync(wasmBinaryPath)) {
       content = content.replace(original, patched);
       fs.writeFileSync(loaderPath, content);
       console.log(`Embedded WASM integrity check in ${loaderPath} (sha256:${wasmHash.slice(0, 16)}...)`);
+      patchedCount++;
     }
+  }
+
+  if (loaderFiles.length > 0 && patchedCount === 0) {
+    console.warn(
+      'WARNING: WASM integrity patch (Patch 2) did not match any loader files. ' +
+      'wasm-bindgen output may have changed. The published package will NOT ' +
+      'include runtime WASM integrity verification.'
+    );
   }
 }

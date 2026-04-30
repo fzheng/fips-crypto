@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Runtime WASM integrity check: SHA-256 hash of the WASM binary is embedded in the Node.js loader at build time and verified before instantiation, blocking tampered binaries from executing
 - Tests for the runtime integrity check (embedded hash correctness and tamper detection)
+- `examples/quantum-safe-wallet.mjs`: end-to-end cryptocurrency wallet simulation demonstrating ML-DSA signature replacement with address-to-key binding validation
 
 ### Changed
 

@@ -12,6 +12,8 @@ High-performance post-quantum cryptography for JavaScript and TypeScript, powere
 [![FIPS 205](https://img.shields.io/badge/FIPS%20205-SLH--DSA-blue)](https://csrc.nist.gov/pubs/fips/205/final)
 [![provenance](https://img.shields.io/badge/provenance-sigstore-green)](https://www.npmjs.com/package/fips-crypto)
 
+> **Note:** This package implements the algorithm specifications in FIPS 203, FIPS 204, and FIPS 205. It is **not** a FIPS 140-2 or FIPS 140-3 validated cryptographic module. If your compliance framework requires CMVP-validated modules, this library does not satisfy that requirement.
+
 ## Why post-quantum cryptography matters
 
 Quantum computers running Shor's algorithm will break the classical cryptography that secures today's systems:

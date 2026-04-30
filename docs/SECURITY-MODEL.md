@@ -1,5 +1,7 @@
 # Security Model
 
+> **Compliance scope:** fips-crypto implements the cryptographic algorithms specified in FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), and FIPS 205 (SLH-DSA). It has not undergone FIPS 140-2 or FIPS 140-3 CMVP validation. The "FIPS" in the package name refers to the algorithm standards implemented, not to module-level validation status.
+
 This document describes what fips-crypto protects against, how, and what it does not guarantee.
 
 ## Quantum Threat Context
