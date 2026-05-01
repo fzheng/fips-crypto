@@ -12,12 +12,24 @@ High-performance post-quantum cryptography for JavaScript and TypeScript, powere
 [![FIPS 205](https://img.shields.io/badge/FIPS%20205-SLH--DSA-blue)](https://csrc.nist.gov/pubs/fips/205/final)
 [![provenance](https://img.shields.io/badge/provenance-sigstore-green)](https://www.npmjs.com/package/fips-crypto)
 
+> **Note:** This package implements the algorithm specifications in FIPS 203, FIPS 204, and FIPS 205. It is **not** a FIPS 140-2 or FIPS 140-3 validated cryptographic module. If your compliance framework requires CMVP-validated modules, this library does not satisfy that requirement.
+
+## Why post-quantum cryptography matters
+
+Quantum computers running Shor's algorithm will break the classical cryptography that secures today's systems:
+
+- **ECDSA** (Bitcoin, Ethereum, TLS) &mdash; private keys derived from public keys
+- **RSA** (HTTPS, email, code signing) &mdash; factored in polynomial time
+- **ECDH/X25519** (key exchange) &mdash; same elliptic curve vulnerability
+
+NIST finalized three post-quantum standards in 2024 (FIPS 203, 204, 205) to replace these vulnerable primitives. fips-crypto brings all three to JavaScript. See the [quantum-safe wallet example](examples/quantum-safe-wallet.mjs) for a demo of replacing the ECDSA signature primitive in a cryptocurrency-style workflow.
+
 ## Why fips-crypto
 
 - **Standards-focused** &mdash; implements NIST [FIPS 203](https://csrc.nist.gov/pubs/fips/203/final) (ML-KEM), [FIPS 204](https://csrc.nist.gov/pubs/fips/204/final) (ML-DSA), and [FIPS 205](https://csrc.nist.gov/pubs/fips/205/final) (SLH-DSA)
 - **Rust + WebAssembly core** &mdash; constant-time-oriented critical paths with Rust-side zeroization of secret material
 - **TypeScript-first** &mdash; full type definitions, explicit input validation, clear error codes
-- **Tested and benchmarked** &mdash; 940+ tests, 99%+ coverage, cross-implementation compliance vectors
+- **Tested and benchmarked** &mdash; 970+ tests, 99%+ coverage, cross-implementation compliance vectors
 - **Flexible** &mdash; ESM, CommonJS, auto-init; Node.js CI-tested, browser-compatible via bundlers
 
 ## Try it now
@@ -46,7 +58,13 @@ const slhSig = await slh_dsa_shake_192f.sign(slhKeys.secretKey, message);
 const slhValid = await slh_dsa_shake_192f.verify(slhKeys.publicKey, message, slhSig);
 ```
 
-See the [fips-crypto-demo](https://github.com/fzheng/fips-crypto-demo) for an interactive app, or browse the [examples/](examples/) folder for ready-to-run scripts.
+See the [fips-crypto-demo](https://github.com/fzheng/fips-crypto-demo) for an interactive app, or browse the [examples/](examples/) folder for ready-to-run scripts:
+
+- [Key Encapsulation](examples/key-encapsulation.mjs) — ML-KEM key exchange
+- [Digital Signatures](examples/digital-signatures.mjs) — ML-DSA signing with context binding
+- [Hash-Based Signatures](examples/hash-based-signatures.mjs) — SLH-DSA signing
+- [Quantum-Safe Wallet](examples/quantum-safe-wallet.mjs) — ML-DSA signature replacement in a crypto-style workflow
+- [CommonJS Usage](examples/commonjs-usage.cjs) — `require()` with auto-init
 
 ## Performance
 
@@ -239,7 +257,7 @@ Every build includes SHA-256 checksums for WASM artifacts. Provenance links each
 
 ## Validation and testing
 
-- **940+** tests (746 JavaScript/TypeScript + 225 Rust)
+- **970+** tests (748 JavaScript/TypeScript + 225 Rust)
 - **99%+** coverage (statements, functions, branches, lines)
 - Cross-implementation compliance vectors for all algorithm families
 - Packed-artifact smoke tests in CI

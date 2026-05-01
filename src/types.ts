@@ -408,14 +408,8 @@ export const ErrorCodes = {
   INVALID_SIGNATURE_LENGTH: 'INVALID_SIGNATURE_LENGTH',
   /** Seed has wrong length */
   INVALID_SEED_LENGTH: 'INVALID_SEED_LENGTH',
-  /** Decapsulation failed (should not happen with valid inputs) */
-  DECAPSULATION_FAILED: 'DECAPSULATION_FAILED',
-  /** Signature verification failed */
-  VERIFICATION_FAILED: 'VERIFICATION_FAILED',
   /** Context string exceeds maximum length (255 bytes) */
   INVALID_CONTEXT_LENGTH: 'INVALID_CONTEXT_LENGTH',
-  /** Algorithm not yet implemented */
-  NOT_IMPLEMENTED: 'NOT_IMPLEMENTED',
 } as const;
 
 /**

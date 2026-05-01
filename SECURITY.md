@@ -4,9 +4,9 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.6.x   | Yes       |
-| 0.5.x   | Yes       |
-| < 0.5   | No        |
+| 1.0.x   | Yes       |
+| 0.7.x   | Yes       |
+| < 0.7   | No        |
 
 ## Reporting a Vulnerability
 
@@ -78,10 +78,11 @@ A successful result confirms the package was built and published by the GitHub A
 
 ### What each verification layer protects against
 
-| Threat | Checksums | Provenance |
-|--------|-----------|------------|
-| CDN/mirror corruption | Yes | No |
-| Stolen npm token | No | Yes |
-| Compromised CI environment | No | No |
+| Threat | Runtime WASM check | Checksums | Provenance |
+|--------|--------------------|-----------|------------|
+| WASM binary tampered post-install | Yes | Yes | No |
+| CDN/mirror corruption | Yes | Yes | No |
+| Stolen npm token | No | No | Yes |
+| Compromised CI environment | No | No | No |
 
 For a detailed security model, see [docs/SECURITY-MODEL.md](docs/SECURITY-MODEL.md#checksums-vs-provenance-threat-boundaries).
